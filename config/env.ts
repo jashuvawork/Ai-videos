@@ -18,6 +18,8 @@ const envSchema = z.object({
   VOICE_API_KEY: z.string().optional(),
   MUSIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  ELEVENLABS_API_KEY: z.string().optional(),
+  RUNWAY_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   APP_URL: z.string().default("http://localhost:3000"),
   /** Origin of the host that stores rendered media (e.g. Railway backend when UI is on Vercel). */

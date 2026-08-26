@@ -1,8 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { env } from "@/config/env";
+import { getActiveProviderNames } from "@/providers";
 
 export default function SettingsPage() {
+  const active = getActiveProviderNames();
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12 space-y-8">
       <div>
@@ -16,20 +19,23 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {[
-            { label: "LLM", value: env.AI_TEXT_PROVIDER },
-            { label: "Image", value: env.AI_IMAGE_PROVIDER },
-            { label: "Video", value: env.AI_VIDEO_PROVIDER },
-            { label: "Voice", value: env.AI_VOICE_PROVIDER },
-            { label: "Music", value: env.AI_MUSIC_PROVIDER },
+            { label: "LLM", configured: env.AI_TEXT_PROVIDER, active: active.llm },
+            { label: "Image", configured: env.AI_IMAGE_PROVIDER, active: active.image },
+            { label: "Video", configured: env.AI_VIDEO_PROVIDER, active: active.video },
+            { label: "Voice", configured: env.AI_VOICE_PROVIDER, active: active.voice },
+            { label: "Music", configured: env.AI_MUSIC_PROVIDER, active: active.music },
           ].map((p) => (
             <div key={p.label} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
               <span className="text-zinc-300">{p.label}</span>
-              <Badge variant={p.value === "mock" ? "warning" : "success"}>{p.value}</Badge>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500">{p.configured}</span>
+                <Badge variant={p.active === "mock" ? "warning" : "success"}>{p.active}</Badge>
+              </div>
             </div>
           ))}
-          {env.AI_TEXT_PROVIDER === "mock" && (
+          {!active.realistic && (
             <p className="text-xs text-amber-400/80 mt-2">
-              Mock mode active — set API keys in .env to use real providers
+              Mock visuals/voice active — add OPENAI_API_KEY, RUNWAY_API_KEY, and ELEVENLABS_API_KEY on Railway for photorealistic output.
             </p>
           )}
         </CardContent>

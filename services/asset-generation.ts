@@ -164,6 +164,7 @@ export class VisualAssetService {
     width: number,
     height: number,
     duration: number,
+    referenceImageUrl?: string,
   ) {
     const providers = createProviders();
 
@@ -174,6 +175,7 @@ export class VisualAssetService {
         width,
         height,
         duration,
+        referenceImageUrl,
       });
 
       const path = `projects/${projectId}/videos/${sceneId}.mp4`;
