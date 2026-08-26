@@ -10,15 +10,18 @@ const UPLOADS_SUBDIR = "uploads";
  * are used as-is; relative paths map to process.cwd()/uploads (or the configured relative path).
  */
 export function getStorageBasePath(): string {
-  let configured = env.STORAGE_LOCAL_PATH.replace(/\/$/, "").replace(/^\.\//, "");
-  if (configured === "app/uploads") {
-    configured = "/app/uploads";
+  const raw = env.STORAGE_LOCAL_PATH.trim().replace(/\/$/, "").replace(/^\.\//, "");
+  if (raw === "app/uploads") {
+    return "/app/uploads";
   }
-  if (configured.startsWith("/")) {
-    return configured;
+  if (raw === "uploads") {
+    return join(process.cwd(), UPLOADS_SUBDIR);
+  }
+  if (raw.startsWith("/")) {
+    return raw;
   }
 
-  const relative = configured.replace(/^\.\//, "");
+  const relative = raw;
   if (relative === UPLOADS_SUBDIR || relative === "") {
     return join(process.cwd(), UPLOADS_SUBDIR);
   }
