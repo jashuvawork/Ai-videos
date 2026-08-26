@@ -15,6 +15,7 @@ interface ProjectData {
   title: string | null;
   idea: string;
   status: string;
+  errorMessage?: string | null;
   hook: string | null;
   summary: string | null;
   duration: number;
@@ -100,6 +101,18 @@ function ProjectContent() {
       {isGenerating && jobId ? (
         <Card className="p-6">
           <ProgressTracker jobId={jobId} onComplete={fetchProject} />
+        </Card>
+      ) : project.status === "FAILED" ? (
+        <Card className="p-8 text-center space-y-3">
+          <p className="text-red-400">Video generation failed.</p>
+          {project.errorMessage && (
+            <p className="text-sm text-zinc-400 max-w-xl mx-auto break-words">{project.errorMessage}</p>
+          )}
+          <p className="text-sm text-zinc-500">Try Fast Mode for quicker, more reliable renders.</p>
+          <Button variant="outline" size="sm" onClick={() => fetchProject()}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
         </Card>
       ) : project.finalVideoUrl ? (
         <VideoPlayer

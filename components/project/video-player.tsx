@@ -63,11 +63,14 @@ export function VideoPlayer({ src, title, downloadUrl, poster }: VideoPlayerProp
         ref={videoRef}
         src={src}
         poster={poster}
-        className="w-full aspect-video object-contain"
+        className="w-full max-h-[80vh] object-contain bg-black"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => setPlaying(false)}
+        onError={() => setPlaying(false)}
         playsInline
+        preload="metadata"
+        crossOrigin="anonymous"
       />
 
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4">

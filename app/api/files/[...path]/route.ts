@@ -13,6 +13,16 @@ const MIME_TYPES: Record<string, string> = {
   ".vtt": "text/vtt",
 };
 
+function mediaHeaders(mimeType: string, contentLength: string | number): Record<string, string> {
+  return {
+    "Content-Type": mimeType,
+    "Cache-Control": "public, max-age=3600",
+    "Content-Length": String(contentLength),
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+  };
+}
+
 function responseFromRemote(remote: Response, filePath: string) {
   const ext = "." + filePath.split(".").pop()?.toLowerCase();
   const mimeType =
@@ -21,10 +31,17 @@ function responseFromRemote(remote: Response, filePath: string) {
     "application/octet-stream";
 
   return new NextResponse(remote.body, {
+    headers: mediaHeaders(mimeType, remote.headers.get("content-length") ?? ""),
+  });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
     headers: {
-      "Content-Type": mimeType,
-      "Cache-Control": "public, max-age=3600",
-      "Content-Length": remote.headers.get("content-length") ?? "",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+      "Access-Control-Max-Age": "86400",
     },
   });
 }
@@ -49,11 +66,7 @@ export async function GET(
     const mimeType = MIME_TYPES[ext] || "application/octet-stream";
 
     return new NextResponse(buffer, {
-      headers: {
-        "Content-Type": mimeType,
-        "Cache-Control": "public, max-age=3600",
-        "Content-Length": String(buffer.length),
-      },
+      headers: mediaHeaders(mimeType, buffer.length),
     });
   }
 

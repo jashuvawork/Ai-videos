@@ -255,7 +255,7 @@ export class VideoGenerationProcessor {
     const wordTimingsMap = new Map<string, Array<{ word: string; start: number; end: number }>>();
 
     if (project.voice !== "NONE") {
-      await mapWithConcurrency(sceneRecords, 3, async (scene) => {
+      await mapWithConcurrency(sceneRecords, 1, async (scene) => {
         if (!scene.narration) return;
         const result = await this.voiceService.generateForScene(
           projectId,

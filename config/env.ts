@@ -36,6 +36,8 @@ const envSchema = z.object({
     .transform((v) => v === "true" || v === "1"),
   OLLAMA_BASE_URL: z.string().optional(),
   STUDIO_ALLOW_PLACEHOLDER_FALLBACK: z.string().optional(),
+  /** When false, Edge TTS failures abort instead of FFmpeg tone fallback. */
+  STUDIO_ALLOW_VOICE_FALLBACK: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   APP_URL: z.string().default("http://localhost:3000"),
   /** Origin of the host that stores rendered media (e.g. Railway backend when UI is on Vercel). */
