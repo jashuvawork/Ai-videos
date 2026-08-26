@@ -81,10 +81,11 @@ export function CreateVideoForm() {
     platform: "INSTAGRAM_REEL",
     aspectRatio: "RATIO_9_16",
     duration: "30",
-    visualStyle: "CINEMATIC",
+    visualStyle: "PHOTOREALISTIC",
     voice: "MALE",
     language: "en",
-    generationMode: "FAST",
+    generationMode: "CINEMATIC",
+    visualGenerationMode: "AI_VIDEO",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,6 +109,7 @@ export function CreateVideoForm() {
           voice: form.voice,
           language: form.language,
           generationMode: form.generationMode,
+          visualGenerationMode: form.visualGenerationMode,
           magicGenerate: magicMode,
         }),
       });
@@ -140,7 +142,7 @@ export function CreateVideoForm() {
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant={magicMode ? "default" : "outline"}
@@ -158,11 +160,28 @@ export function CreateVideoForm() {
             setForm({
               ...form,
               generationMode: form.generationMode === "CINEMATIC" ? "FAST" : "CINEMATIC",
+              visualGenerationMode:
+                form.generationMode === "CINEMATIC" ? "IMAGES" : "AI_VIDEO",
             })
           }
         >
           <Zap className="h-4 w-4" />
-          {form.generationMode === "CINEMATIC" ? "Cinematic Mode" : "Fast Mode"}
+          {form.generationMode === "CINEMATIC" ? "Cinematic AI Video" : "Fast Mode (stills)"}
+        </Button>
+        <Button
+          type="button"
+          variant={form.visualStyle === "PHOTOREALISTIC" ? "default" : "outline"}
+          size="sm"
+          onClick={() =>
+            setForm({
+              ...form,
+              visualStyle: "PHOTOREALISTIC",
+              generationMode: "CINEMATIC",
+              visualGenerationMode: "AI_VIDEO",
+            })
+          }
+        >
+          Photorealistic
         </Button>
       </div>
 

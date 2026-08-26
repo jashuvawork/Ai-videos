@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getResolution } from "@/config/video";
 import { env } from "@/config/env";
 import { videoLog } from "@/lib/logger";
+import { resolvePublicFileUrl } from "@/lib/public-url";
 import { StoryGenerationService } from "@/services/story-generation";
 import { CharacterConsistencyService } from "@/services/character-consistency";
 import { SceneGenerationService } from "@/services/scene-generation";
@@ -175,12 +176,40 @@ export class VideoGenerationProcessor {
       if (!promptSafety.safe) continue;
 
       if (useVideo) {
-        const videoAsset = await this.visualService.generateVideo(
-          projectId, scene.id,
-          scene.visualPrompt || scene.visualDescription || "",
-          scene.negativePrompt || "",
-          width, height, scene.duration,
-        );
+        let videoAsset = null;
+
+        const imageFirstVideo =
+          (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) ||
+          env.AI_VIDEO_PROVIDER === "studio" ||
+          env.AI_VIDEO_PROVIDER === "builtin" ||
+          env.AI_VIDEO_PROVIDER === "local";
+
+        if (imageFirstVideo) {
+          const imageAsset = await this.visualService.generateImage(
+            projectId, scene.id,
+            scene.visualPrompt || scene.visualDescription || "",
+            scene.negativePrompt || "",
+            width, height,
+          );
+          const referenceUrl = resolvePublicFileUrl(
+            imageAsset.url ?? `/api/files/projects/${projectId}/images/${scene.id}.png`,
+          );
+          videoAsset = await this.visualService.generateVideo(
+            projectId, scene.id,
+            scene.visualPrompt || scene.visualDescription || "",
+            scene.negativePrompt || "",
+            width, height, scene.duration,
+            referenceUrl,
+          );
+        } else {
+          videoAsset = await this.visualService.generateVideo(
+            projectId, scene.id,
+            scene.visualPrompt || scene.visualDescription || "",
+            scene.negativePrompt || "",
+            width, height, scene.duration,
+          );
+        }
+
         if (!videoAsset) {
           await this.visualService.generateImage(
             projectId, scene.id,
