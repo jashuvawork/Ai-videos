@@ -1,0 +1,242 @@
+import type { SceneTemplate } from "./types";
+
+/**
+ * Full smartphone manufacturing pipeline — chronological production story.
+ * priority 1 = essential (kept when scene count is low).
+ */
+export const MANUFACTURING_SCENES: SceneTemplate[] = [
+  {
+    key: "factory_intro",
+    purpose: "Establish the manufacturing facility",
+    priority: 1,
+    narration:
+      "Ever wondered how a smartphone is made? The journey begins inside a highly automated manufacturing facility.",
+    visualDescription:
+      "Exterior establishing shot of a vast modern smartphone factory at dawn, large industrial building, delivery trucks arriving, workers in navy uniforms entering through glass doors, clean modern industrial campus",
+    cameraMovement: "slow cinematic drone push-in",
+    cameraAngle: "wide aerial establishing shot",
+    lighting: "soft morning cinematic light with cool industrial interior glow",
+    environment: "modern high-tech manufacturing campus, paved loading bays, landscaped grounds",
+    soundEffects: ["distant truck engines", "subtle industrial ambience"],
+    musicMood: "documentary awe",
+    caption: "FACTORY INTRODUCTION",
+    emotion: "awe",
+    transition: "cut",
+  },
+  {
+    key: "raw_materials",
+    purpose: "Show raw materials arriving and inspection",
+    priority: 1,
+    narration:
+      "Before assembly begins, precision components arrive — glass panels, aluminum frames, circuit boards, camera modules, batteries, displays, and microchips.",
+    visualDescription:
+      "Close-up macro shots of raw smartphone components on inspection trays: tempered glass, brushed aluminum frame pieces, green circuit boards, camera lens modules, lithium battery cells, OLED display panels, silicon chips, tiny connectors",
+    cameraMovement: "slow tracking along conveyor of components",
+    cameraAngle: "extreme close-up macro",
+    lighting: "bright clean inspection lighting with shallow depth of field",
+    environment: "incoming materials QC station, antistatic trays, barcode scanners",
+    soundEffects: ["conveyor belt", "gentle mechanical clicks"],
+    musicMood: "curious documentary",
+    caption: "RAW MATERIALS",
+    emotion: "curious",
+    transition: "cut",
+  },
+  {
+    key: "component_mfg",
+    purpose: "Automated component manufacturing",
+    priority: 2,
+    narration:
+      "Automated machines machine, cut, and shape individual components with microscopic precision.",
+    visualDescription:
+      "CNC machines cutting aluminum phone frames, precision robotic arms handling metal pieces, glass cutting station, camera module sub-assembly robots placing tiny lenses into housings",
+    cameraMovement: "smooth side tracking shot",
+    cameraAngle: "medium factory shot",
+    lighting: "crisp white industrial LED with metallic reflections",
+    environment: "component fabrication floor, CNC stations, robotic cells",
+    soundEffects: ["CNC spindle", "robotic arm servos"],
+    musicMood: "industrial precision",
+    caption: "COMPONENT MANUFACTURING",
+    emotion: "focused",
+    transition: "cut",
+  },
+  {
+    key: "pcb_assembly",
+    purpose: "Circuit board SMT assembly line",
+    priority: 1,
+    narration:
+      "On the SMT line, bare circuit boards enter pick-and-place machines where thousands of micro components are positioned in seconds.",
+    visualDescription:
+      "PCB entering automated SMT line, pick-and-place machines placing tiny resistors and chips, macro shot of solder paste, reflow oven glowing, engineer inspecting finished motherboard under magnifier",
+    cameraMovement: "overhead production line tracking",
+    cameraAngle: "overhead and macro alternating",
+    lighting: "bright technical lighting with green PCB contrast",
+    environment: "electronics assembly hall, SMT machines, ESD-safe flooring",
+    soundEffects: ["pick-and-place rhythm", "reflow oven hum"],
+    musicMood: "technological",
+    caption: "PCB PRODUCTION",
+    emotion: "precise",
+    transition: "cut",
+  },
+  {
+    key: "display_mfg",
+    purpose: "Display panel manufacturing",
+    priority: 2,
+    narration:
+      "Display panels are bonded, inspected, and tested before they ever meet the phone frame.",
+    visualDescription:
+      "Robotic arms lifting pristine glass OLED display panels, optical inspection cameras scanning for defects, protective film application roller, display glow test on dark background",
+    cameraMovement: "slow push-in on display surface",
+    cameraAngle: "close-up product shot",
+    lighting: "display backlight glow against dim inspection booth",
+    environment: "display assembly clean zone, anti-dust environment",
+    soundEffects: ["soft vacuum handling", "inspection camera shutter"],
+    musicMood: "sleek modern",
+    caption: "DISPLAY ASSEMBLY",
+    emotion: "sleek",
+    transition: "cut",
+  },
+  {
+    key: "battery_assembly",
+    purpose: "Battery preparation and safety testing",
+    priority: 2,
+    narration:
+      "Battery cells undergo strict safety inspection before robotic systems install them into the chassis.",
+    visualDescription:
+      "Battery cells on automated inspection conveyor, robotic arm carefully placing battery into phone mid-frame, engineer monitoring voltage test screen, safety testing station with green pass indicators",
+    cameraMovement: "robotic arm POV following placement",
+    cameraAngle: "medium side angle",
+    lighting: "clean neutral factory lighting",
+    environment: "battery assembly station, safety monitoring consoles",
+    soundEffects: ["robotic gripper", "test equipment beeps"],
+    musicMood: "cautious precision",
+    caption: "BATTERY ASSEMBLY",
+    emotion: "careful",
+    transition: "cut",
+  },
+  {
+    key: "camera_assembly",
+    purpose: "Camera module assembly",
+    priority: 2,
+    narration:
+      "Camera modules are assembled from precision lenses and sensors, then optically calibrated.",
+    visualDescription:
+      "Macro cinematic shots of camera lenses, image sensors, triple camera module on robotic assembly table, optical calibration rig with laser alignment, finished camera module gleaming",
+    cameraMovement: "extreme macro orbit",
+    cameraAngle: "extreme macro close-up",
+    lighting: "dramatic macro lighting with lens reflections",
+    environment: "optical assembly lab within factory",
+    soundEffects: ["precision clicks", "calibration tones"],
+    musicMood: "high-tech",
+    caption: "CAMERA ASSEMBLY",
+    emotion: "intricate",
+    transition: "cut",
+  },
+  {
+    key: "phone_assembly_1",
+    purpose: "Phone assembly — frame and motherboard",
+    priority: 1,
+    narration:
+      "Main assembly begins with an empty aluminum frame as engineers and robots install the motherboard.",
+    visualDescription:
+      "Empty midnight blue phone frame on assembly fixture, internal brackets visible, robotic arm lowering motherboard into frame, screws being torqued by automated driver, same phone model visible throughout",
+    cameraMovement: "slow tracking along assembly line",
+    cameraAngle: "side-angle assembly shot",
+    lighting: "bright assembly station lighting",
+    environment: "main phone assembly line, synchronized robotic stations",
+    soundEffects: ["screw driver torque", "conveyor movement"],
+    musicMood: "building momentum",
+    caption: "PHONE ASSEMBLY",
+    emotion: "building",
+    transition: "cut",
+  },
+  {
+    key: "phone_assembly_2",
+    purpose: "Phone assembly — battery, cameras, display",
+    priority: 1,
+    narration:
+      "Battery, triple cameras, speakers, and the edge-to-edge display are installed — the phone takes its final form.",
+    visualDescription:
+      "Battery inserted into frame, triple camera modules mounted on back, display panel carefully seated and pressed, back panel aligned and secured, fully assembled NovaTech X9 smartphone rotating on fixture",
+    cameraMovement: "smooth 180-degree product orbit",
+    cameraAngle: "medium product assembly shot",
+    lighting: "premium product lighting with soft reflections on glass",
+    environment: "final assembly station, phone rotation fixture",
+    soundEffects: ["panel press", "gentle seal click"],
+    musicMood: "crescendo",
+    caption: "FINAL ASSEMBLY",
+    emotion: "satisfying",
+    transition: "cut",
+  },
+  {
+    key: "quality_control",
+    purpose: "Quality control and testing",
+    priority: 1,
+    narration:
+      "Every device passes rigorous quality control — screen, touch, cameras, audio, charging, and network tests.",
+    visualDescription:
+      "Automated QC station testing touchscreen patterns on phone screen, camera color chart test, speaker audio waveform on monitor, drop test rig in background, engineers monitoring dashboards, inspection cameras scanning device",
+    cameraMovement: "tracking through QC tunnel",
+    cameraAngle: "medium wide QC line shot",
+    lighting: "clinical bright testing lighting",
+    environment: "quality control testing hall, multiple test stations",
+    soundEffects: ["test tones", "conveyor rollers"],
+    musicMood: "assured",
+    caption: "QUALITY CONTROL",
+    emotion: "confident",
+    transition: "cut",
+  },
+  {
+    key: "final_cleaning",
+    purpose: "Cleaning and finishing",
+    priority: 3,
+    narration:
+      "Completed phones move through a clean finishing station for polishing, protective film, and final visual inspection.",
+    visualDescription:
+      "Automated cleaning brushes polishing phone surface, protective film applicator, robotic gripper placing phone under bright inspection light, quality verifier nodding at pass result",
+    cameraMovement: "slow push-in on gleaming phone surface",
+    cameraAngle: "close-up finishing shot",
+    lighting: "sparkling clean highlight lighting",
+    environment: "finishing and cleaning station",
+    soundEffects: ["soft polishing", "film peel"],
+    musicMood: "polished",
+    caption: "FINAL CLEANING",
+    emotion: "pristine",
+    transition: "cut",
+  },
+  {
+    key: "packaging",
+    purpose: "Packaging and boxing",
+    priority: 1,
+    narration:
+      "Finished smartphones are boxed with cable, documentation, and protective inserts — ready for the world.",
+    visualDescription:
+      "Phone placed into white NovaTech retail box, USB-C charging cable laid beside it, documentation sleeve inserted, protective cardboard cradle, box lid closed, barcode label applied by printer",
+    cameraMovement: "overhead packaging line tracking",
+    cameraAngle: "overhead and medium alternating",
+    lighting: "clean commercial packaging lighting",
+    environment: "automated packaging line, boxed products accumulating",
+    soundEffects: ["box closing", "label printer"],
+    musicMood: "commercial finish",
+    caption: "FINAL PACKAGING",
+    emotion: "complete",
+    transition: "cut",
+  },
+  {
+    key: "hero_shot",
+    purpose: "Cinematic hero finale",
+    priority: 1,
+    narration:
+      "From raw components to finished smartphone — precision engineering, delivered.",
+    visualDescription:
+      "Cinematic hero shot: finished NovaTech X9 on reflective surface, rows of identical phones on conveyor behind, stacked retail boxes, production line glowing in background, slow cinematic camera movement, premium commercial appearance",
+    cameraMovement: "slow cinematic dolly with gentle parallax",
+    cameraAngle: "low-angle hero product shot",
+    lighting: "premium commercial lighting with soft bokeh background",
+    environment: "factory floor with finished product presentation zone",
+    soundEffects: ["subtle factory ambience", "soft product reveal tone"],
+    musicMood: "triumphant commercial",
+    caption: "FINISHED PRODUCT",
+    emotion: "premium",
+    transition: "fade",
+  },
+];

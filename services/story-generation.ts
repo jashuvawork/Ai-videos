@@ -1,4 +1,5 @@
 import { createProviders } from "@/providers";
+import { DIRECTOR_SYSTEM_PROMPT } from "@/lib/director";
 import { storyPrompt } from "@/lib/prompts";
 import { StorySchema, type Story } from "@/lib/schemas";
 import { parseAiJson } from "@/lib/utils";
@@ -30,7 +31,7 @@ export class StoryGenerationService {
     try {
       response = await providers.llm.generate({
         prompt,
-        systemPrompt: "You are a professional short-form video scriptwriter. Always return valid JSON.",
+        systemPrompt: DIRECTOR_SYSTEM_PROMPT,
         jsonMode: true,
         temperature: 0.8,
       });

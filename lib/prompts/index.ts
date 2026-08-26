@@ -1,3 +1,5 @@
+import { calculateSceneCount } from "@/lib/director/scene-count";
+
 export const storyPrompt = (params: {
   idea: string;
   videoType: string;
@@ -7,26 +9,38 @@ export const storyPrompt = (params: {
   platform: string;
   visualStyle: string;
   generationMode: string;
-}) => `
-You are an expert short-form video storyteller. Create a compelling video script as structured JSON.
+}) => {
+  const targetScenes = calculateSceneCount(params.duration, params.generationMode);
+  return `
+You are an expert AI video director, industrial documentary filmmaker, screenwriter, and cinematographer.
+
+CORE RULE: Do NOT generate one random scene. Transform the idea into a complete, logically connected multi-scene production.
 
 INPUT:
 - Idea: ${params.idea}
 - Video Type: ${params.videoType}
-- Target Duration: ${params.duration} seconds (MUST match exactly in scene durations)
+- Target Duration: ${params.duration} seconds (scene durations MUST sum to exactly ${params.duration})
 - Language: ${params.language}
 - Tone: ${params.tone}
 - Platform: ${params.platform}
 - Visual Style: ${params.visualStyle}
 - Mode: ${params.generationMode}
 
-REQUIREMENTS:
-1. Strong hook in first 1-3 seconds
-2. Emotional progression with clear beginning, escalation, payoff
-3. Scene durations MUST sum to exactly ${params.duration} seconds
-4. For ${params.duration}s video, use ${Math.max(3, Math.min(12, Math.ceil(params.duration / 5)))} scenes
-5. Optimize for retention on ${params.platform}
-6. Narration in ${params.language}
+IF THE IDEA IS MANUFACTURING / FACTORY / HOW SOMETHING IS MADE:
+Expand into chronological production: raw materials → component manufacturing → assembly stages → quality control → cleaning → packaging → hero product shot.
+Maintain STRICT continuity: same product model, color, design, factory, workers, and machines in every scene.
+
+IF THE IDEA IS FOOD / PROCESS:
+Expand: source ingredients → preparation → processing → refining → forming → packaging → finished product hero.
+
+IF NARRATIVE / STORY:
+Expand: hook → character → discovery → escalation → climax → resolution with consistent characters.
+
+SCENE COUNT: Use approximately ${targetScenes} scenes for ${params.duration}s (${params.duration <= 30 ? "8-10" : params.duration <= 60 ? "12-15" : params.duration <= 120 ? "18-25" : "30+"} guideline).
+Each scene normally 3-6 seconds. Strong hook in first 1-3 seconds.
+Narration in ${params.language}. Narration must describe only what is visible on screen.
+For process videos use short caption labels (e.g. RAW MATERIALS, PHONE ASSEMBLY, QUALITY CONTROL).
+Photorealistic industrial documentary style when applicable. Optimize for ${params.platform}.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -54,6 +68,7 @@ Return ONLY valid JSON matching this schema:
   }]
 }
 `;
+};
 
 export const sceneVisualPrompt = (params: {
   scene: {

@@ -137,6 +137,7 @@ export class VideoGenerationProcessor {
       project.visualStyle,
       project.aspectRatio,
       projectId,
+      project.idea,
     );
 
     const sceneRecords = [];
