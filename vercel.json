@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
-    "ASSETS_BASE_URL": "https://ai-video-backend-production-96e9.up.railway.app"
+    "ASSETS_BASE_URL": "https://ai-video-backend-production-4d10.up.railway.app"
   },
   "functions": {
     "app/api/**/*.ts": {

@@ -1,17 +1,26 @@
 # Railway deployment guide
 
+## Projects (do not mix)
+
+| Railway project | Purpose |
+|-----------------|---------|
+| **ai-video-studio** | AI Video Studio only (`ai-video-backend` + dedicated Postgres) |
+| **brave-contentment** | Jgroup and other apps — **do not add AI Video services here** |
+
 ## Architecture (production)
 
 | Service | Platform | Role |
 |---------|----------|------|
-| **ai-video-backend** | Railway | Next.js API + UI + FFmpeg poll worker (single container) |
-| **Postgres (`aivideo` DB)** | Railway | Database (separate from Jgroup) |
-| **Jgroup** | Railway | Unrelated app — **do not modify** |
+| **ai-video-backend** | Railway (`ai-video-studio` project) | Next.js API + UI + FFmpeg poll worker |
+| **Postgres** | Railway (`ai-video-studio` project) | Dedicated database for AI Video Studio |
 
-**Live app:** https://ai-video-backend-production-96e9.up.railway.app
+**Live app:** https://ai-video-backend-production-4d10.up.railway.app
+
+**Dashboard:** https://railway.com/project/911bf6c6-fac3-412f-b11a-8b817902c0ee
 
 The combined `Dockerfile.railway` runs:
 
+- `npx prisma migrate deploy` — apply DB schema on boot
 - `npm start` — Next.js on port 8080
 - `npm run worker:poll` — background job processor (FFmpeg rendering)
 
@@ -19,62 +28,55 @@ Both processes share `/app/uploads` on the same container filesystem, so `/api/f
 
 **Vercel is not recommended** for this app: serverless functions lack persistent storage and FFmpeg. Use Railway only.
 
-## 1. Railway — PostgreSQL
+## 1. Railway — new project setup
 
-1. Railway project → provision **Postgres** (or use existing)
-2. Create a dedicated database for AI Video Studio (separate from other apps):
-
-```sql
-CREATE DATABASE aivideo;
+```bash
+npx @railway/cli@latest init -n ai-video-studio
+npx @railway/cli@latest add -d postgres
+npx @railway/cli@latest add -s ai-video-backend -r jashuvawork/Ai-videos
+npx @railway/cli@latest link -p ai-video-studio -s ai-video-backend
+npx @railway/cli@latest domain   # generates public URL
 ```
 
-3. Copy `DATABASE_URL` pointing to the `aivideo` database.
-
-## 2. Railway — ai-video-backend
-
-1. **New** → **GitHub Repo** → `jashuvawork/Ai-videos`
-2. Service name: `ai-video-backend`
-3. Uses `railway.backend.toml` → `Dockerfile.railway`
-4. Environment variables:
+Environment variables for `ai-video-backend`:
 
 ```env
-DATABASE_URL=postgresql://...@postgres.railway.internal:5432/aivideo
+DATABASE_URL=${{Postgres.DATABASE_URL}}
 DISABLE_INLINE_WORKER=true
 APP_URL=https://your-backend.up.railway.app
 STORAGE_LOCAL_PATH=/app/uploads
-AI_TEXT_PROVIDER=mock
-AI_IMAGE_PROVIDER=mock
-AI_VIDEO_PROVIDER=mock
-AI_VOICE_PROVIDER=mock
-AI_MUSIC_PROVIDER=mock
+AI_TEXT_PROVIDER=studio
+AI_IMAGE_PROVIDER=studio
+AI_VIDEO_PROVIDER=studio
+AI_VOICE_PROVIDER=edge
+AI_MUSIC_PROVIDER=studio
 NODE_ENV=production
 ```
 
-5. Deploy. Health check: `/api/health`
+## 2. Remove AI Video from `brave-contentment` (Jgroup project)
 
-## 3. Disable separate worker (if present)
+Scale AI Video services to zero (Jgroup is untouched):
 
-If you previously deployed `ai-video-worker`, scale it to zero so jobs run only on the combined backend:
+```bash
+npx @railway/cli@latest scale -p brave-contentment -e production -s ai-video-backend sfo=0 us-west=0 us-east=0 eu-west=0 southeast-asia=0
+npx @railway/cli@latest scale -p brave-contentment -e production -s ai-video-worker sfo=0 us-west=0 us-east=0 eu-west=0 southeast-asia=0
+```
+
+Then delete `ai-video-backend` and `ai-video-worker` services in the Railway dashboard (Settings → Delete Service). **Do not delete Postgres** if Jgroup uses it.
+
+## CLI deploy (ai-video-studio project)
 
 ```bash
 export RAILWAY_API_TOKEN=your_account_token
-railway link
-railway scale us-west=0 sfo=0 --service ai-video-worker
+npx @railway/cli@latest link -p ai-video-studio -s ai-video-backend
+git push origin main
+npx @railway/cli@latest up --detach
 ```
 
-## CLI deploy
+Or redeploy:
 
 ```bash
-export RAILWAY_API_TOKEN=your_account_token
-railway link --service ai-video-backend
-git push origin cursor/ai-video-studio-dd06
-railway up --detach
-```
-
-Or redeploy the latest commit:
-
-```bash
-railway redeploy --service ai-video-backend
+npx @railway/cli@latest redeploy -s ai-video-backend
 ```
 
 ## Verify deployment

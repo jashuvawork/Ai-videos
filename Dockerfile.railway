@@ -51,4 +51,4 @@ USER nextjs
 EXPOSE 8080
 
 # API/UI + background job worker share the same filesystem for uploads/renders
-CMD ["sh", "-c", "npm run worker:poll & exec npm start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run worker:poll & exec npm start"]
