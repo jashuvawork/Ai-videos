@@ -5,7 +5,15 @@ const envSchema = z.object({
   STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   STORAGE_URL: z.string().optional(),
   STORAGE_BUCKET: z.string().optional(),
-  STORAGE_LOCAL_PATH: z.string().default("./uploads"),
+  STORAGE_LOCAL_PATH: z
+    .string()
+    .default("./uploads")
+    .transform((v) => {
+      const trimmed = v.trim().replace(/\/$/, "");
+      // Railway misconfig: app/uploads under WORKDIR /app → /app/app/uploads
+      if (trimmed === "app/uploads") return "/app/uploads";
+      return trimmed;
+    }),
   REDIS_URL: z.string().optional(),
   AI_TEXT_PROVIDER: z.string().default("mock"),
   AI_IMAGE_PROVIDER: z.string().default("mock"),
@@ -20,6 +28,12 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
   RUNWAY_API_KEY: z.string().optional(),
+  CURSOR_API_KEY: z.string().optional(),
+  /** When false, Cursor key is stored but Studio LLM is used (Cloud Agents are very slow). */
+  CURSOR_ENABLE_AGENTS: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
   OLLAMA_BASE_URL: z.string().optional(),
   STUDIO_ALLOW_PLACEHOLDER_FALLBACK: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

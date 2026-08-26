@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { access, readFile } from "fs/promises";
-import { join } from "path";
-import { getStorageBasePath } from "@/storage/paths";
+import { readFile } from "fs/promises";
+import { findReadableLocalPath } from "@/storage/paths";
 import { fetchRemoteAsset } from "@/lib/asset-url";
 
 const MIME_TYPES: Record<string, string> = {
@@ -42,12 +41,10 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  const basePath = getStorageBasePath();
-  const fullPath = join(basePath, filePath);
+  const localPath = await findReadableLocalPath(filePath);
 
-  try {
-    await access(fullPath);
-    const buffer = await readFile(fullPath);
+  if (localPath) {
+    const buffer = await readFile(localPath);
     const ext = "." + filePath.split(".").pop()?.toLowerCase();
     const mimeType = MIME_TYPES[ext] || "application/octet-stream";
 
@@ -58,11 +55,11 @@ export async function GET(
         "Content-Length": String(buffer.length),
       },
     });
-  } catch {
-    const remote = await fetchRemoteAsset(filePath);
-    if (remote) {
-      return responseFromRemote(remote, filePath);
-    }
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
+
+  const remote = await fetchRemoteAsset(filePath);
+  if (remote) {
+    return responseFromRemote(remote, filePath);
+  }
+  return NextResponse.json({ error: "File not found" }, { status: 404 });
 }

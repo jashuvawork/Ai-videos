@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { access, readFile } from "fs/promises";
+import { readFile } from "fs/promises";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { fetchRemoteAsset, resolveAssetUrl } from "@/lib/asset-url";
+import { findReadableLocalPath } from "@/storage/paths";
 
 export async function GET(
   _request: Request,
@@ -26,44 +27,40 @@ export async function GET(
   }
 
   const filename = `${project.title || "video"}.mp4`;
+  const assetPath = render.videoUrl?.startsWith("/api/files/")
+    ? render.videoUrl.replace(/^\/api\/files\//, "")
+    : `projects/${id}/renders/v${render.version}/final.mp4`;
 
-  if (render.localPath) {
-    try {
-      await access(render.localPath);
-      const buffer = await readFile(render.localPath);
-      return new NextResponse(buffer, {
-        headers: {
-          "Content-Type": "video/mp4",
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Content-Length": String(buffer.length),
-        },
-      });
-    } catch {
-      // Fall through to remote fetch when files live on Railway worker disk
-    }
+  const localPath = await findReadableLocalPath(assetPath, [render.localPath ?? ""]);
+  if (localPath) {
+    const buffer = await readFile(localPath);
+    return new NextResponse(buffer, {
+      headers: {
+        "Content-Type": "video/mp4",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": String(buffer.length),
+      },
+    });
   }
 
-  if (render.videoUrl?.startsWith("/api/files/")) {
-    const assetPath = render.videoUrl.replace(/^\/api\/files\//, "");
-    const remote = await fetchRemoteAsset(assetPath);
-    if (remote) {
-      const buffer = await remote.arrayBuffer();
-      return new NextResponse(buffer, {
-        headers: {
-          "Content-Type": "video/mp4",
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Content-Length": String(buffer.byteLength),
-        },
-      });
-    }
+  const remote = await fetchRemoteAsset(assetPath);
+  if (remote) {
+    const buffer = await remote.arrayBuffer();
+    return new NextResponse(buffer, {
+      headers: {
+        "Content-Type": "video/mp4",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": String(buffer.byteLength),
+      },
+    });
   }
 
   const remoteUrl = resolveAssetUrl(render.videoUrl);
   if (remoteUrl && remoteUrl !== render.videoUrl) {
     try {
-      const remote = await fetch(remoteUrl, { cache: "no-store" });
-      if (remote.ok) {
-        const buffer = await remote.arrayBuffer();
+      const remoteResponse = await fetch(remoteUrl, { cache: "no-store" });
+      if (remoteResponse.ok) {
+        const buffer = await remoteResponse.arrayBuffer();
         return new NextResponse(buffer, {
           headers: {
             "Content-Type": "video/mp4",
@@ -77,5 +74,14 @@ export async function GET(
     }
   }
 
-  return NextResponse.json({ error: "Video file not found" }, { status: 404 });
+  return NextResponse.json(
+    {
+      error: "Video file not found",
+      hint:
+        project.status === "COMPLETED"
+          ? "The render may have been lost after a redeploy. Regenerate the project on Railway."
+          : "Video is not ready yet or generation failed.",
+    },
+    { status: 404 },
+  );
 }

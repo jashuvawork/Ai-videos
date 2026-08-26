@@ -20,18 +20,34 @@ export function getAssetsBaseUrl(): string | null {
   return base || null;
 }
 
+/** Origins to try when fetching files from a remote assets host (Railway backend, etc.). */
+export function getAssetFetchBaseUrls(): string[] {
+  const bases: string[] = [];
+  const assets = env.ASSETS_BASE_URL?.replace(/\/$/, "");
+  if (assets) bases.push(assets);
+
+  const app = env.APP_URL?.replace(/\/$/, "");
+  if (app && !/localhost|127\.0\.0\.1/.test(app)) bases.push(app);
+
+  return [...new Set(bases)];
+}
+
 /** Fetch a file from the remote assets host (/api/files/...). */
 export async function fetchRemoteAsset(assetPath: string): Promise<Response | null> {
-  const base = getAssetsBaseUrl();
-  if (!base) return null;
+  const normalized = assetPath.replace(/^\/+/, "");
+  const bases = getAssetFetchBaseUrls();
+  if (bases.length === 0) return null;
 
-  const url = `${base}/api/files/${assetPath}`;
-  try {
-    const response = await fetch(url, { cache: "no-store" });
-    return response.ok ? response : null;
-  } catch {
-    return null;
+  for (const base of bases) {
+    const url = `${base}/api/files/${normalized}`;
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (response.ok) return response;
+    } catch {
+      // try next base
+    }
   }
+  return null;
 }
 
 type AssetFields = {

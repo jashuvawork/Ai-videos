@@ -3,6 +3,8 @@ import { getResolution } from "@/config/video";
 import { env } from "@/config/env";
 import { videoLog } from "@/lib/logger";
 import { resolvePublicFileUrl } from "@/lib/public-url";
+import { mapWithConcurrency } from "@/lib/concurrency";
+import { findReadableLocalPath } from "@/storage/paths";
 import { StoryGenerationService } from "@/services/story-generation";
 import { CharacterConsistencyService } from "@/services/character-consistency";
 import { SceneGenerationService } from "@/services/scene-generation";
@@ -166,78 +168,97 @@ export class VideoGenerationProcessor {
     }
 
     const { width, height } = getResolution(project.aspectRatio);
-    const useVideo = project.visualGenerationMode === "AI_VIDEO" ||
-      (project.visualGenerationMode === "AUTOMATIC" && project.generationMode === "CINEMATIC");
+    const useVideo =
+      project.generationMode !== "FAST" &&
+      (project.visualGenerationMode === "AI_VIDEO" ||
+        (project.visualGenerationMode === "AUTOMATIC" && project.generationMode === "CINEMATIC"));
 
     // GENERATE_VISUALS
     await this.updateStep(jobId, "GENERATE_VISUALS");
-    for (const scene of sceneRecords) {
-      const promptSafety = await this.safetyService.checkPrompt(scene.visualPrompt || scene.visualDescription || "");
-      if (!promptSafety.safe) continue;
+
+    const imageFirstVideo =
+      (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) ||
+      env.AI_VIDEO_PROVIDER === "studio" ||
+      env.AI_VIDEO_PROVIDER === "builtin" ||
+      env.AI_VIDEO_PROVIDER === "local";
+
+    await mapWithConcurrency(sceneRecords, 3, async (scene) => {
+      const promptSafety = await this.safetyService.checkPrompt(
+        scene.visualPrompt || scene.visualDescription || "",
+      );
+      if (!promptSafety.safe) return;
 
       if (useVideo) {
         let videoAsset = null;
 
-        const imageFirstVideo =
-          (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) ||
-          env.AI_VIDEO_PROVIDER === "studio" ||
-          env.AI_VIDEO_PROVIDER === "builtin" ||
-          env.AI_VIDEO_PROVIDER === "local";
-
         if (imageFirstVideo) {
           const imageAsset = await this.visualService.generateImage(
-            projectId, scene.id,
+            projectId,
+            scene.id,
             scene.visualPrompt || scene.visualDescription || "",
             scene.negativePrompt || "",
-            width, height,
+            width,
+            height,
           );
           const referenceUrl = resolvePublicFileUrl(
             imageAsset.url ?? `/api/files/projects/${projectId}/images/${scene.id}.png`,
           );
           videoAsset = await this.visualService.generateVideo(
-            projectId, scene.id,
+            projectId,
+            scene.id,
             scene.visualPrompt || scene.visualDescription || "",
             scene.negativePrompt || "",
-            width, height, scene.duration,
+            width,
+            height,
+            scene.duration,
             referenceUrl,
           );
         } else {
           videoAsset = await this.visualService.generateVideo(
-            projectId, scene.id,
+            projectId,
+            scene.id,
             scene.visualPrompt || scene.visualDescription || "",
             scene.negativePrompt || "",
-            width, height, scene.duration,
+            width,
+            height,
+            scene.duration,
           );
         }
 
         if (!videoAsset) {
           await this.visualService.generateImage(
-            projectId, scene.id,
+            projectId,
+            scene.id,
             scene.visualPrompt || scene.visualDescription || "",
             scene.negativePrompt || "",
-            width, height,
+            width,
+            height,
           );
         }
       } else {
         await this.visualService.generateImage(
-          projectId, scene.id,
+          projectId,
+          scene.id,
           scene.visualPrompt || scene.visualDescription || "",
           scene.negativePrompt || "",
-          width, height,
+          width,
+          height,
         );
       }
+
       await prisma.scene.update({ where: { id: scene.id }, data: { status: "visual_complete" } });
-    }
+    });
 
     // GENERATE_VOICE
     await this.updateStep(jobId, "GENERATE_VOICE");
     const wordTimingsMap = new Map<string, Array<{ word: string; start: number; end: number }>>();
 
     if (project.voice !== "NONE") {
-      for (const scene of sceneRecords) {
-        if (!scene.narration) continue;
+      await mapWithConcurrency(sceneRecords, 3, async (scene) => {
+        if (!scene.narration) return;
         const result = await this.voiceService.generateForScene(
-          projectId, scene.id,
+          projectId,
+          scene.id,
           scene.narration,
           project.language,
           project.voice,
@@ -245,7 +266,7 @@ export class VideoGenerationProcessor {
         if (result.wordTimings) {
           wordTimingsMap.set(scene.id, result.wordTimings);
         }
-      }
+      });
     }
 
     // GENERATE_MUSIC
@@ -357,6 +378,14 @@ export class VideoGenerationProcessor {
         thumbnailUrl: render.thumbnailUrl,
       },
     });
+
+    const videoAssetPath = `projects/${projectId}/renders/v${project.version}/final.mp4`;
+    const verifiedPath = await findReadableLocalPath(videoAssetPath, [renderResult.videoPath]);
+    if (!verifiedPath) {
+      throw new Error(
+        `Rendered video missing on disk at ${renderResult.videoPath}. Check STORAGE_LOCAL_PATH.`,
+      );
+    }
 
     // GENERATE_THUMBNAIL
     await this.updateStep(jobId, "GENERATE_THUMBNAIL");
@@ -489,6 +518,22 @@ export class VideoGenerationProcessor {
         fileSize: renderResult.fileSize,
       },
     });
+
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        finalVideoUrl: render.videoUrl,
+        thumbnailUrl: render.thumbnailUrl,
+      },
+    });
+
+    const videoAssetPath = `projects/${projectId}/renders/v${version}/final.mp4`;
+    const verifiedPath = await findReadableLocalPath(videoAssetPath, [renderResult.videoPath]);
+    if (!verifiedPath) {
+      throw new Error(
+        `Rendered video missing on disk at ${renderResult.videoPath}. Check STORAGE_LOCAL_PATH.`,
+      );
+    }
 
     await prisma.project.update({
       where: { id: projectId },

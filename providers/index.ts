@@ -6,6 +6,7 @@ import type { VoiceProvider } from "@/providers/voice/types";
 import type { MusicProvider } from "@/providers/music/types";
 import { createLLMProvider as createOpenAILLMProvider } from "@/providers/llm/openai";
 import { StudioLLMProvider } from "@/providers/llm/studio";
+import { CursorLLMProvider } from "@/providers/llm/cursor";
 import { MockLLMProvider } from "@/providers/llm/mock";
 import { DalleImageProvider } from "@/providers/image/dalle";
 import { StudioImageProvider } from "@/providers/image/studio";
@@ -18,6 +19,7 @@ import { EdgeVoiceProvider } from "@/providers/voice/edge";
 import { MockVoiceProvider } from "@/providers/voice/mock";
 import { StudioMusicProvider } from "@/providers/music/studio";
 import { MockMusicProvider } from "@/providers/music/mock";
+import { getCursorApiKey, verifyCursorApiKey } from "@/providers/cursor/client";
 
 export interface ProviderBundle {
   llm: LLMProvider;
@@ -39,6 +41,9 @@ export function createProviders(): ProviderBundle {
 
 function createLLMProvider(): LLMProvider {
   const provider = env.AI_TEXT_PROVIDER;
+  if (provider === "cursor" && getCursorApiKey()) {
+    return new CursorLLMProvider();
+  }
   if (provider === "openai" && (env.OPENAI_API_KEY || env.LLM_API_KEY)) {
     return createOpenAILLMProvider();
   }
@@ -122,5 +127,12 @@ export function getActiveProviderNames() {
     music: providers.music.name,
     realistic: !isMockMode(),
     zeroApiKeys: providers.llm.name === "studio" && providers.image.name === "studio",
+    cursorApiKeyConfigured: Boolean(getCursorApiKey()),
   };
+}
+
+export async function getProviderStatus() {
+  const active = getActiveProviderNames();
+  const cursorValid = active.cursorApiKeyConfigured ? await verifyCursorApiKey() : false;
+  return { ...active, cursorApiKeyValid: cursorValid };
 }
