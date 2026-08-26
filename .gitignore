@@ -42,3 +42,5 @@ yarn-error.log*
 
 # prisma client
 /lib/generated/prisma
+.vercel
+.env*

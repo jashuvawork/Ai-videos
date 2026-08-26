@@ -23,7 +23,11 @@ export class SceneGenerationService {
     for (const scene of scenes) {
       const prompt = sceneVisualPrompt({
         scene,
-        characters,
+        characters: characters.map((c) => ({
+          name: c.name,
+          visualToken: c.visualToken ?? undefined,
+          visualIdentity: c.visualIdentity ?? undefined,
+        })),
         visualStyle,
         aspectRatio,
       });

@@ -23,12 +23,23 @@ const envSchema = z.object({
   DEV_USER_ID: z.string().default("dev-user-001"),
   RENDER_FPS: z.coerce.number().default(30),
   RENDER_QUALITY: z.enum(["low", "medium", "high"]).default("high"),
+  DISABLE_INLINE_WORKER: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 });
 
 export type Env = z.infer<typeof envSchema>;
 
 function loadEnv(): Env {
-  const parsed = envSchema.safeParse(process.env);
+  const raw = { ...process.env };
+
+  // Allow Next.js build without a live database (set real URL in Vercel/Railway env)
+  if (!raw.DATABASE_URL && process.env.npm_lifecycle_event === "build") {
+    raw.DATABASE_URL = "postgresql://build:build@localhost:5432/build";
+  }
+
+  const parsed = envSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("Invalid environment variables:", parsed.error.flatten().fieldErrors);
     throw new Error("Invalid environment configuration");
