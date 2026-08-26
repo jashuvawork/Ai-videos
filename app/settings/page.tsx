@@ -35,7 +35,12 @@ export default function SettingsPage() {
           ))}
           {!active.realistic && (
             <p className="text-xs text-amber-400/80 mt-2">
-              Mock visuals/voice active — add OPENAI_API_KEY, RUNWAY_API_KEY, and ELEVENLABS_API_KEY on Railway for photorealistic output.
+              Placeholder visuals active — set providers to <code className="text-zinc-400">studio</code> / <code className="text-zinc-400">edge</code> (default, no API keys) or add paid API keys.
+            </p>
+          )}
+          {active.zeroApiKeys && (
+            <p className="text-xs text-emerald-400/80 mt-2">
+              Zero-API-key Studio mode — Pollinations images, Edge TTS, FFmpeg motion.
             </p>
           )}
         </CardContent>

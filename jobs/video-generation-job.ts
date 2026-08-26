@@ -178,8 +178,13 @@ export class VideoGenerationProcessor {
       if (useVideo) {
         let videoAsset = null;
 
-        // Runway image-to-video: generate a still first, then animate it for realism
-        if (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) {
+        const imageFirstVideo =
+          (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) ||
+          env.AI_VIDEO_PROVIDER === "studio" ||
+          env.AI_VIDEO_PROVIDER === "builtin" ||
+          env.AI_VIDEO_PROVIDER === "local";
+
+        if (imageFirstVideo) {
           const imageAsset = await this.visualService.generateImage(
             projectId, scene.id,
             scene.visualPrompt || scene.visualDescription || "",

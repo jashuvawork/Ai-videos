@@ -4,13 +4,19 @@ import type { ImageProvider } from "@/providers/image/types";
 import type { VideoProvider } from "@/providers/video/types";
 import type { VoiceProvider } from "@/providers/voice/types";
 import type { MusicProvider } from "@/providers/music/types";
-import { createLLMProvider } from "@/providers/llm/openai";
+import { createLLMProvider as createOpenAILLMProvider } from "@/providers/llm/openai";
+import { StudioLLMProvider } from "@/providers/llm/studio";
+import { MockLLMProvider } from "@/providers/llm/mock";
 import { DalleImageProvider } from "@/providers/image/dalle";
+import { StudioImageProvider } from "@/providers/image/studio";
 import { MockImageProvider } from "@/providers/image/mock";
 import { RunwayVideoProvider } from "@/providers/video/runway";
+import { StudioVideoProvider } from "@/providers/video/studio";
 import { MockVideoProvider } from "@/providers/video/mock";
 import { ElevenLabsVoiceProvider } from "@/providers/voice/elevenlabs";
+import { EdgeVoiceProvider } from "@/providers/voice/edge";
 import { MockVoiceProvider } from "@/providers/voice/mock";
+import { StudioMusicProvider } from "@/providers/music/studio";
 import { MockMusicProvider } from "@/providers/music/mock";
 
 export interface ProviderBundle {
@@ -31,6 +37,21 @@ export function createProviders(): ProviderBundle {
   };
 }
 
+function createLLMProvider(): LLMProvider {
+  const provider = env.AI_TEXT_PROVIDER;
+  if (provider === "openai" && (env.OPENAI_API_KEY || env.LLM_API_KEY)) {
+    return createOpenAILLMProvider();
+  }
+  if (provider === "studio" || provider === "builtin" || provider === "local") {
+    return new StudioLLMProvider();
+  }
+  if (provider === "mock") {
+    return new MockLLMProvider();
+  }
+  // Default: built-in studio (no API keys)
+  return new StudioLLMProvider();
+}
+
 function createImageProvider(): ImageProvider {
   const provider = env.AI_IMAGE_PROVIDER;
   if (provider === "dalle" || provider === "openai") {
@@ -38,7 +59,13 @@ function createImageProvider(): ImageProvider {
       return new DalleImageProvider();
     }
   }
-  return new MockImageProvider();
+  if (provider === "studio" || provider === "builtin" || provider === "local" || provider === "pollinations") {
+    return new StudioImageProvider();
+  }
+  if (provider === "mock") {
+    return new MockImageProvider();
+  }
+  return new StudioImageProvider();
 }
 
 function createVideoProvider(): VideoProvider {
@@ -46,7 +73,13 @@ function createVideoProvider(): VideoProvider {
   if (provider === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) {
     return new RunwayVideoProvider();
   }
-  return new MockVideoProvider();
+  if (provider === "studio" || provider === "builtin" || provider === "local" || provider === "ffmpeg") {
+    return new StudioVideoProvider();
+  }
+  if (provider === "mock") {
+    return new MockVideoProvider();
+  }
+  return new StudioVideoProvider();
 }
 
 function createVoiceProvider(): VoiceProvider {
@@ -54,21 +87,29 @@ function createVoiceProvider(): VoiceProvider {
   if (provider === "elevenlabs" && (env.VOICE_API_KEY || env.ELEVENLABS_API_KEY)) {
     return new ElevenLabsVoiceProvider();
   }
-  return new MockVoiceProvider();
+  if (provider === "edge" || provider === "studio" || provider === "builtin" || provider === "local") {
+    return new EdgeVoiceProvider();
+  }
+  if (provider === "mock") {
+    return new MockVoiceProvider();
+  }
+  return new EdgeVoiceProvider();
 }
 
 function createMusicProvider(): MusicProvider {
-  return new MockMusicProvider();
+  const provider = env.AI_MUSIC_PROVIDER;
+  if (provider === "studio" || provider === "builtin" || provider === "local") {
+    return new StudioMusicProvider();
+  }
+  if (provider === "mock") {
+    return new MockMusicProvider();
+  }
+  return new StudioMusicProvider();
 }
 
 export function isMockMode(): boolean {
   const providers = createProviders();
-  return (
-    providers.llm.name === "mock" ||
-    providers.image.name === "mock" ||
-    providers.video.name === "mock" ||
-    providers.voice.name === "mock"
-  );
+  return providers.image.name === "mock" || providers.video.name === "mock";
 }
 
 export function getActiveProviderNames() {
@@ -80,5 +121,6 @@ export function getActiveProviderNames() {
     voice: providers.voice.name,
     music: providers.music.name,
     realistic: !isMockMode(),
+    zeroApiKeys: providers.llm.name === "studio" && providers.image.name === "studio",
   };
 }
