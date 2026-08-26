@@ -21,6 +21,11 @@ const envSchema = z.object({
   ELEVENLABS_API_KEY: z.string().optional(),
   RUNWAY_API_KEY: z.string().optional(),
   CURSOR_API_KEY: z.string().optional(),
+  /** When false, Cursor key is stored but Studio LLM is used (Cloud Agents are very slow). */
+  CURSOR_ENABLE_AGENTS: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
   OLLAMA_BASE_URL: z.string().optional(),
   STUDIO_ALLOW_PLACEHOLDER_FALLBACK: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

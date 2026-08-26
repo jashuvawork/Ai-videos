@@ -1,4 +1,5 @@
 import { ProviderError } from "@/providers/shared/errors";
+import { env } from "@/config/env";
 import {
   createCursorAgentRun,
   getCursorApiKey,
@@ -16,7 +17,7 @@ export class CursorLLMProvider implements LLMProvider {
   private readonly fallback = new StudioLLMProvider();
 
   async generate(options: LLMGenerateOptions): Promise<LLMResponse> {
-    if (!getCursorApiKey()) {
+    if (!getCursorApiKey() || !env.CURSOR_ENABLE_AGENTS) {
       return this.fallback.generate(options);
     }
 

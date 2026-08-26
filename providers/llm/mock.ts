@@ -7,7 +7,10 @@ export class MockLLMProvider implements LLMProvider {
   async generate(options: LLMGenerateOptions): Promise<LLMResponse> {
     const idea = extractIdea(options.prompt);
     const duration = extractDuration(options.prompt) || 30;
-    const sceneCount = Math.max(3, Math.min(8, Math.ceil(duration / 5)));
+    const mode = extractGenerationMode(options.prompt);
+    const secondsPerScene = mode === "CINEMATIC" ? 5 : 8;
+    const maxScenes = mode === "CINEMATIC" ? 8 : 4;
+    const sceneCount = Math.max(3, Math.min(maxScenes, Math.ceil(duration / secondsPerScene)));
     const durations = distributeDurations(duration, sceneCount);
 
     const story = {
@@ -98,6 +101,11 @@ function extractIdea(prompt: string): string {
 function extractDuration(prompt: string): number | null {
   const match = prompt.match(/Duration:\s*(\d+)/i) || prompt.match(/(\d+)\s*seconds/i);
   return match ? parseInt(match[1], 10) : null;
+}
+
+function extractGenerationMode(prompt: string): string {
+  const match = prompt.match(/Mode:\s*(\w+)/i);
+  return match?.[1]?.toUpperCase() || "FAST";
 }
 
 function extractName(prompt: string): string | null {

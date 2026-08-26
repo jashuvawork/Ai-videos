@@ -84,8 +84,8 @@ export function CreateVideoForm() {
     visualStyle: "PHOTOREALISTIC",
     voice: "MALE",
     language: "en",
-    generationMode: "CINEMATIC",
-    visualGenerationMode: "AI_VIDEO",
+    generationMode: "FAST",
+    visualGenerationMode: "IMAGES",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,7 +166,9 @@ export function CreateVideoForm() {
           }
         >
           <Zap className="h-4 w-4" />
-          {form.generationMode === "CINEMATIC" ? "Cinematic AI Video" : "Fast Mode (stills)"}
+          {form.generationMode === "CINEMATIC"
+            ? "Cinematic (slower, more scenes)"
+            : "Fast Mode (~1–2 min)"}
         </Button>
         <Button
           type="button"

@@ -18,6 +18,31 @@ export class SceneGenerationService {
     projectId?: string,
   ) {
     const providers = createProviders();
+
+    // Studio scripts already include visual descriptions — skip slow per-scene LLM calls
+    if (providers.llm.name === "studio") {
+      return scenes.map((scene) => {
+        const base = scene.visualDescription || scene.narration || "cinematic scene";
+        const visualPrompt = this.characterService.enrichPromptWithCharacters(
+          `cinematic photorealistic ${visualStyle.toLowerCase()}, ${base}, dramatic lighting, high detail`,
+          characters,
+        );
+        return {
+          sceneNumber: scene.sceneNumber,
+          visualPrompt,
+          negativePrompt:
+            "text, watermark, blurry, deformed hands, duplicate face, low quality, cartoon",
+          duration: scene.duration,
+          cameraShot: scene.cameraAngle || "medium shot",
+          cameraMovement: scene.cameraMovement || "slow zoom in",
+          lighting: scene.lighting || "dramatic cinematic",
+          environment: scene.environment || "atmospheric",
+          emotion: scene.emotion || "engaging",
+          transition: scene.transition || "cut",
+        };
+      });
+    }
+
     const results = [];
 
     for (const scene of scenes) {

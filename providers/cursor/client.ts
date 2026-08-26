@@ -71,7 +71,7 @@ export async function createCursorAgentRun(prompt: string, modelId = "composer-2
 export async function waitForCursorRun(
   agentId: string,
   runId: string,
-  timeoutMs = 300000,
+  timeoutMs = 60000,
 ): Promise<CursorRunResult> {
   const start = Date.now();
 
