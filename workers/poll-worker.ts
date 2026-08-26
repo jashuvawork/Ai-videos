@@ -36,7 +36,10 @@ async function poll() {
 }
 
 async function main() {
+  const { getStorageBasePath } = await import("../storage/paths");
   console.log("[WORKER] AI Video Studio poll worker started");
+  console.log("[WORKER] STORAGE_LOCAL_PATH=", process.env.STORAGE_LOCAL_PATH);
+  console.log("[WORKER] storage base=", getStorageBasePath());
   console.log("[WORKER] Polling for PENDING/RETRYING jobs every", POLL_INTERVAL_MS, "ms");
 
   // eslint-disable-next-line no-constant-condition

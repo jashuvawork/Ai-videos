@@ -6,14 +6,14 @@ import { getStorageBasePath } from "./paths";
 
 export class LocalStorageProvider implements StorageProvider {
   readonly name = "local";
-  private basePath: string;
 
-  constructor() {
-    this.basePath = getStorageBasePath();
+  /** Resolve on each call so worker/API always use current env (not module-load snapshot). */
+  private basePath(): string {
+    return getStorageBasePath();
   }
 
   async upload(buffer: Buffer, path: string, _mimeType: string): Promise<StorageUploadResult> {
-    const fullPath = join(this.basePath, path);
+    const fullPath = join(this.basePath(), path);
     await mkdir(dirname(fullPath), { recursive: true });
     await writeFile(fullPath, buffer);
     return {
@@ -24,7 +24,7 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   getLocalPath(path: string): string {
-    return join(this.basePath, path);
+    return join(this.basePath(), path);
   }
 
   getPublicUrl(path: string): string {
@@ -32,13 +32,13 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async delete(path: string): Promise<void> {
-    const fullPath = join(this.basePath, path);
+    const fullPath = join(this.basePath(), path);
     await unlink(fullPath).catch(() => {});
   }
 
   async exists(path: string): Promise<boolean> {
     try {
-      await access(join(this.basePath, path));
+      await access(join(this.basePath(), path));
       return true;
     } catch {
       return false;

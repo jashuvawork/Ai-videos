@@ -22,14 +22,8 @@ export function getAssetsBaseUrl(): string | null {
 
 /** Origins to try when fetching files from a remote assets host (Railway backend, etc.). */
 export function getAssetFetchBaseUrls(): string[] {
-  const bases: string[] = [];
   const assets = env.ASSETS_BASE_URL?.replace(/\/$/, "");
-  if (assets) bases.push(assets);
-
-  const app = env.APP_URL?.replace(/\/$/, "");
-  if (app && !/localhost|127\.0\.0\.1/.test(app)) bases.push(app);
-
-  return [...new Set(bases)];
+  return assets ? [assets] : [];
 }
 
 /** Fetch a file from the remote assets host (/api/files/...). */
