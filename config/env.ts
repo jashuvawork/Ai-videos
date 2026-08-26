@@ -35,11 +35,28 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-function loadEnv(): Env {
-  const raw = { ...process.env };
+function isBuildPhase(): boolean {
+  return (
+    process.env.npm_lifecycle_event === "build" ||
+    process.env.NEXT_PHASE === "phase-production-build"
+  );
+}
 
-  // Allow Next.js build without a live database (set real URL in Vercel/Railway env)
-  if (!raw.DATABASE_URL && process.env.npm_lifecycle_event === "build") {
+/** Vercel preview builds may inject empty env vars — treat those as unset so defaults apply. */
+function sanitizeEnv(raw: Record<string, string | undefined>): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined || value.trim() === "") continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+function loadEnv(): Env {
+  const raw = sanitizeEnv({ ...process.env });
+
+  // Allow Next.js/Vercel builds without production secrets
+  if (!raw.DATABASE_URL && isBuildPhase()) {
     raw.DATABASE_URL = "postgresql://build:build@localhost:5432/build";
   }
 
