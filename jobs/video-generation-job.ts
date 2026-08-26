@@ -20,6 +20,7 @@ import { ReferenceStyleProfileSchema } from "@/lib/schemas/reference-style";
 import { JOB_STEP_ORDER, stepProgress } from "./queue";
 import type { JobStep } from "@/lib/generated/prisma/client";
 import { shouldGenerateSceneVideos } from "@/lib/video-generation-mode";
+import { isRunwayConfigured } from "@/providers/runway/client";
 
 export class VideoGenerationProcessor {
   private storyService = new StoryGenerationService();
@@ -194,7 +195,7 @@ export class VideoGenerationProcessor {
     await this.updateStep(jobId, "GENERATE_VISUALS");
 
     const imageFirstVideo =
-      (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) ||
+      isRunwayConfigured() ||
       env.AI_VIDEO_PROVIDER === "studio" ||
       env.AI_VIDEO_PROVIDER === "builtin" ||
       env.AI_VIDEO_PROVIDER === "local";

@@ -7,6 +7,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     exclude: ["tests/e2e-pipeline.test.ts"],
     testTimeout: 120000,
+    setupFiles: ["tests/setup.ts"],
   },
   resolve: {
     alias: {

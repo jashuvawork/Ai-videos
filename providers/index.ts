@@ -20,6 +20,7 @@ import { MockVoiceProvider } from "@/providers/voice/mock";
 import { StudioMusicProvider } from "@/providers/music/studio";
 import { MockMusicProvider } from "@/providers/music/mock";
 import { getCursorApiKey, verifyCursorApiKey } from "@/providers/cursor/client";
+import { isRunwayConfigured } from "@/providers/runway/client";
 
 export interface ProviderBundle {
   llm: LLMProvider;
@@ -75,7 +76,12 @@ function createImageProvider(): ImageProvider {
 
 function createVideoProvider(): VideoProvider {
   const provider = env.AI_VIDEO_PROVIDER;
-  if (provider === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) {
+  const runwayReady = isRunwayConfigured();
+
+  if (runwayReady && (provider === "runway" || provider === "studio" || provider === "builtin" || provider === "local")) {
+    return new RunwayVideoProvider();
+  }
+  if (provider === "runway" && runwayReady) {
     return new RunwayVideoProvider();
   }
   if (provider === "studio" || provider === "builtin" || provider === "local" || provider === "ffmpeg") {
@@ -134,5 +140,10 @@ export function getActiveProviderNames() {
 export async function getProviderStatus() {
   const active = getActiveProviderNames();
   const cursorValid = active.cursorApiKeyConfigured ? await verifyCursorApiKey() : false;
-  return { ...active, cursorApiKeyValid: cursorValid };
+  return {
+    ...active,
+    cursorApiKeyValid: cursorValid,
+    runwayApiKeyConfigured: isRunwayConfigured(),
+    gen4Available: isRunwayConfigured(),
+  };
 }

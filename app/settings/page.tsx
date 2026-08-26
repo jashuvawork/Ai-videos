@@ -2,9 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { env } from "@/config/env";
 import { getActiveProviderNames } from "@/providers";
+import { isRunwayConfigured } from "@/providers/runway/client";
 
 export default function SettingsPage() {
   const active = getActiveProviderNames();
+  const runwayConfigured = isRunwayConfigured();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12 space-y-8">
@@ -38,9 +40,21 @@ export default function SettingsPage() {
               Placeholder visuals active — set providers to <code className="text-zinc-400">studio</code> / <code className="text-zinc-400">edge</code> (default, no API keys) or add paid API keys.
             </p>
           )}
-          {active.zeroApiKeys && (
+          {active.zeroApiKeys && !runwayConfigured && (
             <p className="text-xs text-emerald-400/80 mt-2">
               Zero-API-key Studio mode — Pollinations images, Edge TTS, FFmpeg motion.
+            </p>
+          )}
+          {runwayConfigured && (
+            <p className="text-xs text-violet-400/90 mt-2">
+              Runway Gen-4 enabled — scene videos use true AI motion via Gen-4 Turbo when a reference still exists.
+              Open <a href="/gen4" className="underline hover:text-violet-300">Gen-4 Studio</a> for standalone clips.
+            </p>
+          )}
+          {!runwayConfigured && (
+            <p className="text-xs text-zinc-500 mt-2">
+              Add <code className="text-zinc-400">RUNWAY_API_KEY</code> (or <code className="text-zinc-400">VIDEO_API_KEY</code>)
+              for Runway Gen-4 real-time video instead of FFmpeg motion fallback.
             </p>
           )}
         </CardContent>
