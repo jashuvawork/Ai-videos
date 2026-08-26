@@ -16,6 +16,7 @@ export type DirectorInput = {
   generationMode: string;
   aspectRatio?: string;
   voice?: string;
+  videoType?: string;
 };
 
 export type SceneTemplate = {
@@ -47,6 +48,13 @@ export type ContinuityBible = {
   characterVisual?: string;
   negativePromptBase: string;
   contentType: ContentType;
+  /** Hyper-realistic continuity engine tokens */
+  phoneIdentity?: string;
+  factoryIdentity?: string;
+  characterIdentity?: string;
+  productReference?: string;
+  captureMedium?: string;
+  lensCharacter?: string;
 };
 
 export type DirectorStory = {

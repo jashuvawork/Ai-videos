@@ -34,15 +34,6 @@ export function hashColorFromPrompt(text: string): string {
   return `0x${rr}${gg}${bb}`;
 }
 
-function sanitizeDrawtext(text: string): string {
-  return text
-    .replace(/[':\\\n\r]/g, " ")
-    .replace(/[^\w\s,.-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 50);
-}
-
 export async function fetchPollinationsImage(
   prompt: string,
   width: number,
@@ -130,22 +121,29 @@ export function detectImageFormatFromBuffer(buffer: Buffer) {
   return detectImageFormat(buffer);
 }
 
-export async function cinematicPlaceholderImage(
+/** Text-free fallback still — industrial tones, grain, vignette. Never embeds prompt text. */
+export async function industrialPlaceholderImage(
   prompt: string,
   width: number,
   height: number,
 ): Promise<Buffer> {
   const tmpPath = `/tmp/studio-placeholder-${Date.now()}.png`;
   const color = hashColorFromPrompt(prompt);
-  const label = sanitizeDrawtext(prompt);
+  const isProcess = /factory|conveyor|industrial|mixer|dough|biscuit|manufactur|production|stainless|oven|packaging/i.test(
+    prompt,
+  );
+  const baseColor = isProcess ? "0x1a2228" : color;
 
   await execFileAsync("ffmpeg", [
     "-y",
-    "-f", "lavfi",
-    "-i", `color=c=${color}:s=${width}x${height}:d=1`,
+    "-f",
+    "lavfi",
+    "-i",
+    `color=c=${baseColor}:s=${width}x${height}:d=1`,
     "-vf",
-    `vignette,drawtext=text='${label}':fontsize=18:fontcolor=white@0.7:x=(w-text_w)/2:y=h-80`,
-    "-frames:v", "1",
+    "vignette=angle=PI/4,noise=alls=12:allf=t+u,eq=brightness=-0.05:contrast=1.05",
+    "-frames:v",
+    "1",
     tmpPath,
   ]);
 
@@ -153,4 +151,13 @@ export async function cinematicPlaceholderImage(
   const buffer = await readFile(tmpPath);
   await unlink(tmpPath).catch(() => {});
   return buffer;
+}
+
+/** @deprecated Use industrialPlaceholderImage — kept for callers migrating off text overlays */
+export async function cinematicPlaceholderImage(
+  prompt: string,
+  width: number,
+  height: number,
+): Promise<Buffer> {
+  return industrialPlaceholderImage(prompt, width, height);
 }

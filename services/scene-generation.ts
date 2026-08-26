@@ -1,18 +1,35 @@
 import { createProviders } from "@/providers";
 import { buildContinuityBible } from "@/lib/director/continuity";
-import { detectContentType } from "@/lib/director/detect";
+import { isProcessVideo, resolveContentType } from "@/lib/director/detect";
 import { buildVisualPrompt } from "@/lib/director/visual-prompt";
+import { validateSceneDescription, REAL_WORLD_ACTION_SUFFIX } from "@/lib/director/no-text";
 import type { SceneTemplate } from "@/lib/director/types";
+import type { ReferenceStyleProfile } from "@/lib/schemas/reference-style";
 import { sceneVisualPrompt } from "@/lib/prompts";
 import { VisualPromptSchema } from "@/lib/schemas";
 import { parseAiJson } from "@/lib/utils";
 import type { SceneData } from "@/lib/schemas";
 import { CharacterConsistencyService } from "./character-consistency";
 import { CostTrackingService } from "./cost-tracking";
+import { IndustrialRealismService } from "./industrial-realism";
+import { CameraEngineService } from "./camera-engine";
+import { VisualConsistencyCheckService } from "./visual-consistency-check";
+import { ReferenceAnalysisService } from "./reference-analysis";
+
+export type SceneVisualPromptOptions = {
+  idea?: string;
+  videoType?: string;
+  aspectRatio?: string;
+  referenceStyle?: ReferenceStyleProfile | null;
+};
 
 export class SceneGenerationService {
   private characterService = new CharacterConsistencyService();
   private costTracker = new CostTrackingService();
+  private industrialRealism = new IndustrialRealismService();
+  private cameraEngine = new CameraEngineService();
+  private consistencyCheck = new VisualConsistencyCheckService();
+  private referenceAnalysis = new ReferenceAnalysisService();
 
   async generateVisualPrompts(
     scenes: SceneData[],
@@ -21,60 +38,98 @@ export class SceneGenerationService {
     aspectRatio: string,
     projectId?: string,
     idea?: string,
+    options?: SceneVisualPromptOptions,
   ) {
-    const providers = createProviders();
+    const videoType = options?.videoType;
+    const referenceStyle = options?.referenceStyle;
+    const contentType = idea ? resolveContentType(idea, videoType) : "narrative";
+    const useProcessDirector = isProcessVideo(contentType, videoType);
 
-    if (providers.llm.name === "studio") {
-      const contentType = idea ? detectContentType(idea) : "narrative";
-      const continuity = idea ? buildContinuityBible(contentType, idea) : null;
-      const useDirectorPrompts =
-        continuity &&
-        (contentType === "manufacturing" || contentType === "food_process");
+    if (useProcessDirector && idea) {
+      const continuity = buildContinuityBible(contentType, idea);
 
       return scenes.map((scene) => {
-        if (useDirectorPrompts) {
-          const template = sceneToTemplate(scene);
-          const built = buildVisualPrompt({
-            scene: template,
-            continuity,
-            visualStyle,
-            aspectRatio,
-            characters,
-          });
-          const visualPrompt = this.characterService.enrichPromptWithCharacters(
-            built.visualPrompt,
-            characters,
-          );
-          return {
-            sceneNumber: scene.sceneNumber,
-            visualPrompt,
-            negativePrompt: built.negativePrompt,
-            duration: scene.duration,
-            cameraShot: built.cameraShot,
-            cameraMovement: built.cameraMovement,
-            lighting: built.lighting,
-            environment: built.environment,
-            emotion: built.emotion,
-            transition: scene.transition || "cut",
-          };
+        const template = sceneToTemplate(scene);
+        const sceneKey = (scene as SceneData & { sceneKey?: string }).sceneKey || template.key;
+        const camera = this.cameraEngine.selectForAction(
+          sceneKey,
+          template.cameraMovement,
+          template.cameraAngle,
+        );
+        template.cameraMovement = camera.cameraMovement;
+        template.cameraAngle = camera.cameraAngle;
+
+        const industrialTemplate = this.industrialRealism.applyToSceneTemplate(template);
+        let built = buildVisualPrompt({
+          scene: industrialTemplate,
+          continuity,
+          visualStyle,
+          aspectRatio,
+          characters: [], // no portrait character injection for process videos
+        });
+
+        if (referenceStyle) {
+          built.visualPrompt = this.referenceAnalysis.applyToPrompt(built.visualPrompt, referenceStyle);
         }
 
-        const base = scene.visualDescription || scene.narration || "cinematic scene";
+        const check = this.consistencyCheck.checkScene(scene, {
+          aspectRatio,
+          referenceStyle,
+          isProcessVideo: true,
+        });
+
+        if (!check.valid) {
+          built.visualPrompt = this.consistencyCheck.repairPrompt(built.visualPrompt, true);
+        }
+
+        const validation = validateSceneDescription(built.visualPrompt);
+        if (!validation.valid) {
+          built.visualPrompt = `${built.visualPrompt}. ${REAL_WORLD_ACTION_SUFFIX}`;
+        }
+
+        return {
+          sceneNumber: scene.sceneNumber,
+          visualPrompt: built.visualPrompt,
+          negativePrompt: this.industrialRealism.enrichNegativePrompt(built.negativePrompt),
+          duration: scene.duration,
+          cameraShot: built.cameraShot,
+          cameraMovement: built.cameraMovement,
+          lighting: built.lighting,
+          environment: built.environment,
+          emotion: built.emotion,
+          transition: scene.transition || "cut",
+        };
+      });
+    }
+
+    const providers = createProviders();
+
+    if (providers.llm.name === "studio" || providers.llm.name === "mock") {
+      const continuity = idea ? buildContinuityBible(contentType, idea) : null;
+
+      return scenes.map((scene) => {
+        const template = sceneToTemplate(scene);
+        const built = buildVisualPrompt({
+          scene: template,
+          continuity: continuity!,
+          visualStyle,
+          aspectRatio,
+          characters,
+        });
         const visualPrompt = this.characterService.enrichPromptWithCharacters(
-          `cinematic photorealistic ${visualStyle.toLowerCase()}, ${base}, dramatic lighting, high detail`,
+          built.visualPrompt,
           characters,
         );
         return {
           sceneNumber: scene.sceneNumber,
           visualPrompt,
-          negativePrompt:
-            "text, watermark, blurry, deformed hands, duplicate face, low quality, cartoon, floating objects",
+          negativePrompt: built.negativePrompt,
           duration: scene.duration,
-          cameraShot: scene.cameraAngle || "medium shot",
-          cameraMovement: scene.cameraMovement || "slow zoom in",
-          lighting: scene.lighting || "dramatic cinematic",
-          environment: scene.environment || "atmospheric",
-          emotion: scene.emotion || "engaging",
+          cameraShot: built.cameraShot,
+          cameraMovement: built.cameraMovement,
+          lighting: built.lighting,
+          environment: built.environment,
+          emotion: built.emotion,
           transition: scene.transition || "cut",
         };
       });
@@ -131,8 +186,9 @@ export class SceneGenerationService {
 }
 
 function sceneToTemplate(scene: SceneData): SceneTemplate {
+  const extended = scene as SceneData & { sceneKey?: string };
   return {
-    key: `scene_${scene.sceneNumber}`,
+    key: extended.sceneKey || `scene_${scene.sceneNumber}`,
     purpose: scene.caption || "scene",
     priority: 1,
     narration: scene.narration || "",

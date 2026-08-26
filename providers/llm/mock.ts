@@ -72,11 +72,11 @@ export class MockLLMProvider implements LLMProvider {
     const idea = extractIdea(options.prompt) || "cinematic scene";
     const visual = {
       visualPrompt:
-        "photorealistic real-world documentary footage, active physical motion, " +
+        "hyper-realistic documentary footage, professional cinema camera, controlled static shot, active physical motion, " +
         idea +
-        ", realistic materials, natural shadows, no visible text, no titles, no labels",
+        ", natural color grading, subtle film grain, no visible text",
       negativePrompt:
-        "title cards, text overlays, captions, subtitles, typography, labels, watermark, cartoon, floating objects, deformed hands, extra fingers, static shot with no action, blank background, low quality",
+        "title cards, text overlays, half CGI look, AI slideshow, cartoon, floating objects, deformed hands, extra fingers, static shot, blank background, excessive camera movement, low quality",
       cameraShot: "medium shot",
       cameraMovement: "slow tracking",
       lighting: "cinematic industrial",
@@ -100,6 +100,7 @@ function extractDirectorInput(prompt: string) {
     generationMode: extractGenerationMode(prompt),
     aspectRatio: extractField(prompt, "Aspect Ratio") || undefined,
     voice: extractField(prompt, "Voice") || "NONE",
+    videoType: extractField(prompt, "Video Type") || undefined,
   };
 }
 

@@ -1,11 +1,14 @@
 import { distributeDurations } from "@/lib/utils";
 import { buildContinuityBible } from "./continuity";
-import { detectContentType, isVerticalPlatform } from "./detect";
+import { detectContentType, isVerticalPlatform, resolveContentType } from "./detect";
 import { calculateSceneCount } from "./scene-count";
 import { FOOD_PROCESS_SCENES } from "./templates/food";
 import { MANUFACTURING_SCENES } from "./templates/manufacturing";
 import { buildNarrativeScenes } from "./templates/narrative";
+import { ProcessContinuityService } from "@/services/process-continuity";
 import type { DirectorInput, DirectorStory, SceneTemplate } from "./types";
+
+const processContinuity = new ProcessContinuityService();
 
 export function selectScenesForDuration(
   templates: SceneTemplate[],
@@ -41,18 +44,34 @@ export function selectScenesForDuration(
 
   // Restore chronological order by original template index
   const orderMap = new Map(templates.map((t, idx) => [t.key, idx]));
-  return picked
+  const ordered = picked
     .sort((a, b) => (orderMap.get(a.key) ?? 0) - (orderMap.get(b.key) ?? 0))
     .slice(0, sceneCount);
+
+  // Always end on finale shot when trimming (hero / outbound)
+  if (sceneCount < templates.length && ordered.length > 0) {
+    const finale = templates[templates.length - 1];
+    if (!ordered.some((s) => s.key === finale.key)) {
+      ordered[ordered.length - 1] = finale;
+    }
+  }
+
+  return ordered;
 }
 
-function getTemplatesForType(contentType: string, idea: string): SceneTemplate[] {
+function getTemplatesForType(contentType: string, idea: string, videoType?: string): SceneTemplate[] {
+  const processTemplates = processContinuity.getTemplatesForIdea(idea);
+  if (processTemplates) return processTemplates;
+
   switch (contentType) {
     case "manufacturing":
       return MANUFACTURING_SCENES;
     case "food_process":
       return FOOD_PROCESS_SCENES;
     default:
+      if (videoType === "MANUFACTURING") {
+        return processContinuity.toSceneTemplates(processContinuity.buildChain(idea));
+      }
       return buildNarrativeScenes(idea);
   }
 }
@@ -76,7 +95,9 @@ function buildHook(contentType: string, idea: string, vertical: boolean): string
       : "Inside the factory: from raw components to finished smartphone.";
   }
   if (contentType === "food_process") {
-    return "From raw ingredients to the finished product — see how it's really made.";
+    return vertical
+      ? "From raw ingredients to the finished product — see how it's really made."
+      : "Inside the factory: every step of real-world food production.";
   }
   return `Nobody expected what happened when ${idea.split(/[.!?]/)[0].trim()}…`;
 }
@@ -86,7 +107,7 @@ function buildSummary(contentType: string, idea: string): string {
     return `A realistic cinematic documentary showing the complete journey of smartphone manufacturing: ${idea}. From raw materials through component production, PCB assembly, display and battery installation, final assembly, quality control, packaging, and finished product presentation.`;
   }
   if (contentType === "food_process") {
-    return `A documentary journey showing how ${idea.split(/[.!?]/)[0]} is produced from source ingredients through processing, refining, packaging, and final presentation.`;
+    return `A documentary journey showing how ${idea.split(/[.!?]/)[0]} is produced — raw material receiving through ingredient prep, mixing, forming, baking or processing, cooling, quality inspection, packaging, and finished product outbound.`;
   }
   return `A cinematic short film about: ${idea}`;
 }
@@ -143,9 +164,9 @@ function sceneCaption(contentType: string): string {
 }
 
 export function generateDirectorStory(input: DirectorInput): DirectorStory {
-  const contentType = detectContentType(input.idea);
+  const contentType = resolveContentType(input.idea, input.videoType);
   const continuity = buildContinuityBible(contentType, input.idea);
-  const templates = getTemplatesForType(contentType, input.idea);
+  const templates = getTemplatesForType(contentType, input.idea, input.videoType);
   const sceneCount = calculateSceneCount(input.duration, input.generationMode);
   const selected = selectScenesForDuration(templates, sceneCount);
   const durations = distributeDurations(input.duration, selected.length);
@@ -188,26 +209,36 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
 
 function injectContinuity(visual: string, continuity: ReturnType<typeof buildContinuityBible>): string {
   if (continuity.contentType === "manufacturing") {
-    return `${visual}. Same NovaTech X9 phone throughout: midnight blue frame, triple vertical cameras, 6.7 inch display. Same factory. Active machines and workers. No readable text on devices, boxes, or signs.`;
+    return `${visual}. ${continuity.productReference ?? ""}. Same fictional NovaTech X9 throughout. Cause-effect physical steps visible. No readable text. Hyper-realistic documentary footage.`;
+  }
+  if (continuity.contentType === "food_process") {
+    return `${visual}. ${continuity.productReference ?? ""}. Continuous production process with visible cause-effect steps. No readable text. Hyper-realistic documentary footage.`;
   }
   return visual;
 }
 
-export const DIRECTOR_SYSTEM_PROMPT = `You are an expert filmmaker and AI video production director.
+export const DIRECTOR_SYSTEM_PROMPT = `You are an expert cinematic filmmaker, documentary director, cinematographer, and hyper-realistic AI video director.
 
-MOST IMPORTANT: NEVER create title cards, text slides, chapter labels, or captions on screen. The story must be told through VISUAL ACTION only.
+FINAL STANDARD: footage must look like a professional documentary crew filmed inside a real location — NOT an AI slideshow, presentation, title cards, or generic stock montage.
 
-For manufacturing / factory ideas:
-- Show actual raw materials, machinery, workers, robotic arms, conveyors, and operations — NOT words like "RAW MATERIALS" on a blank background
-- Every scene must have meaningful physical activity; machines operating, hands handling parts, conveyors moving
-- Chronological production pipeline with strict product continuity (same phone model, factory, workers)
-- Photorealistic footage that looks like a real factory was filmed
+HYPER-REALISM RULES:
+1. Define HOW footage is captured: professional documentary camera, controlled movement, natural color grading, subtle film grain
+2. SIMPLE MOTION per shot: one or two subjects, one or two simple actions, minimal camera movement (static or slow tracking)
+3. SHOW actual physical events with believable cause and effect — never title cards or chapter labels on screen
+4. ZERO unrequested visible text in generated visuals
+5. CONTINUITY ENGINE: maintain PHONE_IDENTITY, FACTORY_IDENTITY, CHARACTER_IDENTITY across every scene
+6. NATURAL IMPERFECTION: subtle scratches, cables, vibration, realistic depth of field — not sterile CGI
+7. MACHINES: approach, grip, lift, place, release — no teleportation or skipped physics
+8. HUMANS: correct hands, looking at work not camera, natural worker behavior
 
-NO TEXT BY DEFAULT: no titles, labels, captions, subtitles, logos, watermarks, or readable UI in generated visuals.
-Narration is optional voice-over only — never put narration text on screen.
-If voice is not requested, leave narration empty and rely on environmental factory sounds.
+Manufacturing: fictional but realistic NovaTech X9 plant — full pipeline from receiving through machining, SMT, assembly, testing, cleaning, packaging.
+Narration optional voice-over only when voice requested; caption field always empty string.
 
-Scene count by duration: 30s→8-10, 60s→12-15, 120s→18-25, 300s+→30+ scenes.
-Each scene: detailed action-focused visualDescription, camera, lighting, environment. caption field must be empty string.
+Scene count: 30s→8-10, 60s→12-15, 120s→18-25, 300s+→30+.
+Each visualDescription must describe LOCATION, SUBJECT, ACTION, PHYSICAL INTERACTION, and what happens next.
 
 Always return valid JSON matching the requested schema.`;
+
+export { validateSceneDescription } from "./no-text";
+export { buildContinuityIdentities } from "./continuity-engine";
+export { captureMediumForContent } from "./capture-medium";

@@ -15,6 +15,7 @@ export const SceneSchema = z.object({
   caption: z.string().optional().default(""),
   transition: z.string().optional().default("cut"),
   emotion: z.string().optional().default("neutral"),
+  sceneKey: z.string().optional(),
 });
 
 export const CharacterSchema = z.object({
