@@ -20,6 +20,7 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
   RUNWAY_API_KEY: z.string().optional(),
+  CURSOR_API_KEY: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
   STUDIO_ALLOW_PLACEHOLDER_FALLBACK: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
