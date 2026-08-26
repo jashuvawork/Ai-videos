@@ -100,6 +100,7 @@ function extractDirectorInput(prompt: string) {
     generationMode: extractGenerationMode(prompt),
     aspectRatio: extractField(prompt, "Aspect Ratio") || undefined,
     voice: extractField(prompt, "Voice") || "NONE",
+    videoType: extractField(prompt, "Video Type") || undefined,
   };
 }
 

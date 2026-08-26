@@ -15,6 +15,8 @@ import { VideoRenderService } from "@/services/video-render";
 import { MetadataService, ThumbnailService } from "@/services/metadata";
 import { ContentSafetyService } from "@/services/content-safety";
 import { CostTrackingService } from "@/services/cost-tracking";
+import { VideoQAService } from "@/services/video-qa";
+import { ReferenceStyleProfileSchema } from "@/lib/schemas/reference-style";
 import { JOB_STEP_ORDER, stepProgress } from "./queue";
 import type { JobStep } from "@/lib/generated/prisma/client";
 
@@ -32,6 +34,7 @@ export class VideoGenerationProcessor {
   private thumbnailService = new ThumbnailService();
   private safetyService = new ContentSafetyService();
   private costTracker = new CostTrackingService();
+  private videoQA = new VideoQAService();
 
   async process(jobId: string, projectId: string, sceneId?: string) {
     const job = await prisma.generationJob.update({
@@ -132,6 +135,8 @@ export class VideoGenerationProcessor {
       visualToken: c.visualToken ?? undefined,
       visualIdentity: c.visualIdentity ?? undefined,
     }));
+    const referenceStyle = this.parseReferenceStyle(project.referenceStyleProfile);
+
     const visualPrompts = await this.sceneService.generateVisualPrompts(
       story.scenes,
       mappedCharacters,
@@ -139,15 +144,22 @@ export class VideoGenerationProcessor {
       project.aspectRatio,
       projectId,
       project.idea,
+      {
+        videoType: project.videoType,
+        aspectRatio: project.aspectRatio,
+        referenceStyle,
+      },
     );
 
     const sceneRecords = [];
     for (const scene of story.scenes) {
       const vp = visualPrompts.find((v) => v.sceneNumber === scene.sceneNumber);
+      const sceneKey = (scene as { sceneKey?: string }).sceneKey;
       const record = await prisma.scene.create({
         data: {
           projectId,
           sceneNumber: scene.sceneNumber,
+          sceneKey,
           duration: scene.duration,
           narration: scene.narration,
           dialogue: scene.dialogue,
@@ -215,6 +227,7 @@ export class VideoGenerationProcessor {
             scene.duration,
             referenceUrl,
             imageAsset.localPath ?? undefined,
+            scene.cameraMovement ?? undefined,
           );
         } else {
           videoAsset = await this.visualService.generateVideo(
@@ -225,6 +238,9 @@ export class VideoGenerationProcessor {
             width,
             height,
             scene.duration,
+            undefined,
+            undefined,
+            scene.cameraMovement ?? undefined,
           );
         }
 
@@ -390,6 +406,11 @@ export class VideoGenerationProcessor {
       );
     }
 
+    const qa = await this.videoQA.analyze(verifiedPath);
+    if (!qa.valid) {
+      throw new Error(`Video QA failed: ${qa.issues.join("; ")}`);
+    }
+
     // GENERATE_THUMBNAIL
     await this.updateStep(jobId, "GENERATE_THUMBNAIL");
     await this.thumbnailService.generate(projectId, project.version);
@@ -411,6 +432,15 @@ export class VideoGenerationProcessor {
     });
 
     await this.costTracker.estimate(projectId);
+  }
+
+  private parseReferenceStyle(raw: unknown) {
+    if (!raw) return null;
+    try {
+      return ReferenceStyleProfileSchema.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   private async regenerateScene(projectId: string, sceneId: string, jobId: string) {

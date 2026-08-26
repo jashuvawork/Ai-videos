@@ -1,11 +1,14 @@
 import { distributeDurations } from "@/lib/utils";
 import { buildContinuityBible } from "./continuity";
-import { detectContentType, isVerticalPlatform } from "./detect";
+import { detectContentType, isVerticalPlatform, resolveContentType } from "./detect";
 import { calculateSceneCount } from "./scene-count";
 import { FOOD_PROCESS_SCENES } from "./templates/food";
 import { MANUFACTURING_SCENES } from "./templates/manufacturing";
 import { buildNarrativeScenes } from "./templates/narrative";
+import { ProcessContinuityService } from "@/services/process-continuity";
 import type { DirectorInput, DirectorStory, SceneTemplate } from "./types";
+
+const processContinuity = new ProcessContinuityService();
 
 export function selectScenesForDuration(
   templates: SceneTemplate[],
@@ -56,13 +59,19 @@ export function selectScenesForDuration(
   return ordered;
 }
 
-function getTemplatesForType(contentType: string, idea: string): SceneTemplate[] {
+function getTemplatesForType(contentType: string, idea: string, videoType?: string): SceneTemplate[] {
+  const processTemplates = processContinuity.getTemplatesForIdea(idea);
+  if (processTemplates) return processTemplates;
+
   switch (contentType) {
     case "manufacturing":
       return MANUFACTURING_SCENES;
     case "food_process":
       return FOOD_PROCESS_SCENES;
     default:
+      if (videoType === "MANUFACTURING") {
+        return processContinuity.toSceneTemplates(processContinuity.buildChain(idea));
+      }
       return buildNarrativeScenes(idea);
   }
 }
@@ -86,7 +95,9 @@ function buildHook(contentType: string, idea: string, vertical: boolean): string
       : "Inside the factory: from raw components to finished smartphone.";
   }
   if (contentType === "food_process") {
-    return "From raw ingredients to the finished product — see how it's really made.";
+    return vertical
+      ? "From raw ingredients to the finished product — see how it's really made."
+      : "Inside the factory: every step of real-world food production.";
   }
   return `Nobody expected what happened when ${idea.split(/[.!?]/)[0].trim()}…`;
 }
@@ -96,7 +107,7 @@ function buildSummary(contentType: string, idea: string): string {
     return `A realistic cinematic documentary showing the complete journey of smartphone manufacturing: ${idea}. From raw materials through component production, PCB assembly, display and battery installation, final assembly, quality control, packaging, and finished product presentation.`;
   }
   if (contentType === "food_process") {
-    return `A documentary journey showing how ${idea.split(/[.!?]/)[0]} is produced from source ingredients through processing, refining, packaging, and final presentation.`;
+    return `A documentary journey showing how ${idea.split(/[.!?]/)[0]} is produced — raw material receiving through ingredient prep, mixing, forming, baking or processing, cooling, quality inspection, packaging, and finished product outbound.`;
   }
   return `A cinematic short film about: ${idea}`;
 }
@@ -153,9 +164,9 @@ function sceneCaption(contentType: string): string {
 }
 
 export function generateDirectorStory(input: DirectorInput): DirectorStory {
-  const contentType = detectContentType(input.idea);
+  const contentType = resolveContentType(input.idea, input.videoType);
   const continuity = buildContinuityBible(contentType, input.idea);
-  const templates = getTemplatesForType(contentType, input.idea);
+  const templates = getTemplatesForType(contentType, input.idea, input.videoType);
   const sceneCount = calculateSceneCount(input.duration, input.generationMode);
   const selected = selectScenesForDuration(templates, sceneCount);
   const durations = distributeDurations(input.duration, selected.length);
@@ -199,6 +210,9 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
 function injectContinuity(visual: string, continuity: ReturnType<typeof buildContinuityBible>): string {
   if (continuity.contentType === "manufacturing") {
     return `${visual}. ${continuity.productReference ?? ""}. Same fictional NovaTech X9 throughout. Cause-effect physical steps visible. No readable text. Hyper-realistic documentary footage.`;
+  }
+  if (continuity.contentType === "food_process") {
+    return `${visual}. ${continuity.productReference ?? ""}. Continuous production process with visible cause-effect steps. No readable text. Hyper-realistic documentary footage.`;
   }
   return visual;
 }

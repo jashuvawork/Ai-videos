@@ -46,7 +46,7 @@ export class StudioVideoProvider implements VideoProvider {
       options.height,
       duration,
       30,
-      "slow zoom in",
+      options.cameraMovement || "slow zoom in",
     );
 
     return {

@@ -45,6 +45,8 @@ export function buildContinuityIdentities(contentType: ContentType, idea: string
 }
 
 function extractSubject(idea: string): string {
-  const match = idea.match(/\b(chocolate|coffee|bread|pizza|pasta|cheese|wine|beer|cake|cookie|cocoa)\b/i);
+  const match = idea.match(
+    /\b(chocolate|coffee|bread|pizza|pasta|cheese|wine|beer|cake|cookie|biscuit|cracker|cocoa)\b/i,
+  );
   return match ? match[1] : "artisan food product";
 }
