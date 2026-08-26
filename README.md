@@ -194,28 +194,33 @@ npx tsx tests/e2e-pipeline.test.ts
 
 ## Production Deployment
 
-### Recommended Architecture
+**Recommended:** Deploy the full app on **Railway** (API + UI + FFmpeg worker in one container). See [DEPLOY.md](./DEPLOY.md).
+
+**Live:** https://ai-video-backend-production-96e9.up.railway.app
+
+Vercel is **not recommended** for this app — serverless functions lack persistent disk and FFmpeg.
+
+### Architecture (Railway)
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Vercel /   │     │  PostgreSQL  │     │  S3 / R2    │
-│  Next.js    │────▶│  (managed)   │     │  Storage    │
-│  (API + UI) │     └──────────────┘     └─────────────┘
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐     ┌──────────────┐
-│  Worker     │────▶│  Redis       │
-│  (Docker)   │     │  (BullMQ)    │
-│  FFmpeg     │     └──────────────┘
-└─────────────┘
+┌──────────────────────────────────────┐
+│  ai-video-backend (Dockerfile.railway)│
+│  Next.js API/UI + poll worker + FFmpeg│
+│  Shared /app/uploads filesystem       │
+└──────────────┬───────────────────────┘
+               │
+               ▼
+        ┌──────────────┐
+        │  PostgreSQL  │
+        │  (aivideo DB)│
+        └──────────────┘
 ```
 
-**Important**: Video rendering is long-running. Do not run FFmpeg in serverless functions. Use a dedicated worker process:
+**Important**: Video rendering is long-running. Do not run FFmpeg in serverless functions. The Railway container runs `worker:poll` alongside `next start`:
 
 ```bash
-# Worker process (separate from Next.js)
-npm run worker
+npm run worker:poll   # background job processor
+npm start             # Next.js server
 ```
 
 ### Storage

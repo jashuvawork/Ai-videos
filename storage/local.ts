@@ -2,13 +2,14 @@ import { mkdir, writeFile, unlink, access } from "fs/promises";
 import { join, dirname } from "path";
 import { env } from "@/config/env";
 import type { StorageProvider, StorageUploadResult } from "./types";
+import { getStorageBasePath } from "./paths";
 
 export class LocalStorageProvider implements StorageProvider {
   readonly name = "local";
   private basePath: string;
 
   constructor() {
-    this.basePath = join(process.cwd(), env.STORAGE_LOCAL_PATH);
+    this.basePath = getStorageBasePath();
   }
 
   async upload(buffer: Buffer, path: string, _mimeType: string): Promise<StorageUploadResult> {

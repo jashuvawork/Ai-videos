@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+uploads
+renders
+.env*
+*.md
+tests
+.agents
+.claude
