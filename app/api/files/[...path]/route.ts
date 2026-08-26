@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { join } from "path";
-import { env } from "@/config/env";
+import { getStorageBasePath } from "@/storage/paths";
 
 const MIME_TYPES: Record<string, string> = {
   ".mp4": "video/mp4",
@@ -25,9 +25,7 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  const basePath = env.STORAGE_LOCAL_PATH.startsWith("/")
-    ? env.STORAGE_LOCAL_PATH
-    : join(process.cwd(), env.STORAGE_LOCAL_PATH);
+  const basePath = getStorageBasePath();
   const fullPath = join(basePath, filePath);
 
   try {
