@@ -20,6 +20,28 @@ export function hashSeed(text: string): number {
   return Math.abs(hash) % 999999;
 }
 
+/** Valid 6-digit RGB hex for FFmpeg color=0xRRGGBB */
+export function hashColorFromPrompt(text: string): string {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) hash = text.charCodeAt(i) + ((hash << 5) - hash);
+  const r = ((hash >> 16) & 0xff) + 40;
+  const g = ((hash >> 8) & 0xff) + 40;
+  const b = (hash & 0xff) + 40;
+  const rr = Math.min(255, r).toString(16).padStart(2, "0");
+  const gg = Math.min(255, g).toString(16).padStart(2, "0");
+  const bb = Math.min(255, b).toString(16).padStart(2, "0");
+  return `0x${rr}${gg}${bb}`;
+}
+
+function sanitizeDrawtext(text: string): string {
+  return text
+    .replace(/[':\\\n\r]/g, " ")
+    .replace(/[^\w\s,.-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 50);
+}
+
 export async function fetchPollinationsImage(
   prompt: string,
   width: number,
@@ -106,15 +128,15 @@ export async function cinematicPlaceholderImage(
   height: number,
 ): Promise<Buffer> {
   const tmpPath = `/tmp/studio-placeholder-${Date.now()}.png`;
-  const hue = hashSeed(prompt) % 360;
-  const sanitized = prompt.replace(/[':\\\n\r]/g, " ").slice(0, 60);
+  const color = hashColorFromPrompt(prompt);
+  const label = sanitizeDrawtext(prompt);
 
   await execFileAsync("ffmpeg", [
     "-y",
     "-f", "lavfi",
-    "-i", `color=c=0x${hue.toString(16).padStart(2, "0")}3030:s=${width}x${height}:d=1`,
+    "-i", `color=c=${color}:s=${width}x${height}:d=1`,
     "-vf",
-    `geq=r='r(X,Y)+30*sin(X/40)':g='g(X,Y)+20*sin(Y/30)':b='b(X,Y)',vignette,drawtext=text='${sanitized}':fontsize=18:fontcolor=white@0.7:x=(w-text_w)/2:y=h-80`,
+    `vignette,drawtext=text='${label}':fontsize=18:fontcolor=white@0.7:x=(w-text_w)/2:y=h-80`,
     "-frames:v", "1",
     tmpPath,
   ]);
