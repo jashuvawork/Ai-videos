@@ -41,9 +41,19 @@ export function selectScenesForDuration(
 
   // Restore chronological order by original template index
   const orderMap = new Map(templates.map((t, idx) => [t.key, idx]));
-  return picked
+  const ordered = picked
     .sort((a, b) => (orderMap.get(a.key) ?? 0) - (orderMap.get(b.key) ?? 0))
     .slice(0, sceneCount);
+
+  // Always end on finale shot when trimming (hero / outbound)
+  if (sceneCount < templates.length && ordered.length > 0) {
+    const finale = templates[templates.length - 1];
+    if (!ordered.some((s) => s.key === finale.key)) {
+      ordered[ordered.length - 1] = finale;
+    }
+  }
+
+  return ordered;
 }
 
 function getTemplatesForType(contentType: string, idea: string): SceneTemplate[] {
@@ -188,26 +198,33 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
 
 function injectContinuity(visual: string, continuity: ReturnType<typeof buildContinuityBible>): string {
   if (continuity.contentType === "manufacturing") {
-    return `${visual}. Same NovaTech X9 phone throughout: midnight blue frame, triple vertical cameras, 6.7 inch display. Same factory. Active machines and workers. No readable text on devices, boxes, or signs.`;
+    return `${visual}. ${continuity.productReference ?? ""}. Same fictional NovaTech X9 throughout. Cause-effect physical steps visible. No readable text. Hyper-realistic documentary footage.`;
   }
   return visual;
 }
 
-export const DIRECTOR_SYSTEM_PROMPT = `You are an expert filmmaker and AI video production director.
+export const DIRECTOR_SYSTEM_PROMPT = `You are an expert cinematic filmmaker, documentary director, cinematographer, and hyper-realistic AI video director.
 
-MOST IMPORTANT: NEVER create title cards, text slides, chapter labels, or captions on screen. The story must be told through VISUAL ACTION only.
+FINAL STANDARD: footage must look like a professional documentary crew filmed inside a real location — NOT an AI slideshow, presentation, title cards, or generic stock montage.
 
-For manufacturing / factory ideas:
-- Show actual raw materials, machinery, workers, robotic arms, conveyors, and operations — NOT words like "RAW MATERIALS" on a blank background
-- Every scene must have meaningful physical activity; machines operating, hands handling parts, conveyors moving
-- Chronological production pipeline with strict product continuity (same phone model, factory, workers)
-- Photorealistic footage that looks like a real factory was filmed
+HYPER-REALISM RULES:
+1. Define HOW footage is captured: professional documentary camera, controlled movement, natural color grading, subtle film grain
+2. SIMPLE MOTION per shot: one or two subjects, one or two simple actions, minimal camera movement (static or slow tracking)
+3. SHOW actual physical events with believable cause and effect — never title cards or chapter labels on screen
+4. ZERO unrequested visible text in generated visuals
+5. CONTINUITY ENGINE: maintain PHONE_IDENTITY, FACTORY_IDENTITY, CHARACTER_IDENTITY across every scene
+6. NATURAL IMPERFECTION: subtle scratches, cables, vibration, realistic depth of field — not sterile CGI
+7. MACHINES: approach, grip, lift, place, release — no teleportation or skipped physics
+8. HUMANS: correct hands, looking at work not camera, natural worker behavior
 
-NO TEXT BY DEFAULT: no titles, labels, captions, subtitles, logos, watermarks, or readable UI in generated visuals.
-Narration is optional voice-over only — never put narration text on screen.
-If voice is not requested, leave narration empty and rely on environmental factory sounds.
+Manufacturing: fictional but realistic NovaTech X9 plant — full pipeline from receiving through machining, SMT, assembly, testing, cleaning, packaging.
+Narration optional voice-over only when voice requested; caption field always empty string.
 
-Scene count by duration: 30s→8-10, 60s→12-15, 120s→18-25, 300s+→30+ scenes.
-Each scene: detailed action-focused visualDescription, camera, lighting, environment. caption field must be empty string.
+Scene count: 30s→8-10, 60s→12-15, 120s→18-25, 300s+→30+.
+Each visualDescription must describe LOCATION, SUBJECT, ACTION, PHYSICAL INTERACTION, and what happens next.
 
 Always return valid JSON matching the requested schema.`;
+
+export { validateSceneDescription } from "./no-text";
+export { buildContinuityIdentities } from "./continuity-engine";
+export { captureMediumForContent } from "./capture-medium";

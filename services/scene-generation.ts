@@ -2,6 +2,7 @@ import { createProviders } from "@/providers";
 import { buildContinuityBible } from "@/lib/director/continuity";
 import { detectContentType } from "@/lib/director/detect";
 import { buildVisualPrompt } from "@/lib/director/visual-prompt";
+import { validateSceneDescription, REAL_WORLD_ACTION_SUFFIX } from "@/lib/director/no-text";
 import type { SceneTemplate } from "@/lib/director/types";
 import { sceneVisualPrompt } from "@/lib/prompts";
 import { VisualPromptSchema } from "@/lib/schemas";
@@ -41,8 +42,12 @@ export class SceneGenerationService {
             aspectRatio,
             characters,
           });
+          const validation = validateSceneDescription(built.visualPrompt);
+          const visualPromptBase = validation.valid
+            ? built.visualPrompt
+            : `${built.visualPrompt}. ${REAL_WORLD_ACTION_SUFFIX}`;
           const visualPrompt = this.characterService.enrichPromptWithCharacters(
-            built.visualPrompt,
+            visualPromptBase,
             characters,
           );
           return {

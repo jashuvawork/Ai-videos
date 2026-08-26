@@ -1,13 +1,11 @@
 import type { ContinuityBible, SceneTemplate } from "./types";
-import { ABSOLUTE_NEGATIVE_PROMPT, NO_TEXT_VISUAL_SUFFIX, REAL_WORLD_ACTION_SUFFIX } from "./no-text";
-
-const STYLE_DESCRIPTORS: Record<string, string> = {
-  CINEMATIC:
-    "photorealistic industrial documentary footage, professionally filmed real factory, subtle 35mm grain, natural motion blur",
-  PHOTOREALISTIC: "photorealistic, ultra detailed textures, natural reflections, real-world footage quality",
-  REALISTIC: "realistic, natural lighting, physically accurate motion",
-  ANIMATED: "stylized animation, vibrant colors",
-};
+import {
+  ABSOLUTE_NEGATIVE_PROMPT,
+  HYPER_REALISM_SUFFIX,
+  NO_TEXT_VISUAL_SUFFIX,
+  REAL_WORLD_ACTION_SUFFIX,
+} from "./no-text";
+import { SIMPLE_MOTION_DIRECTIVE, NATURAL_IMPERFECTION_DIRECTIVE } from "./capture-medium";
 
 export function buildVisualPrompt(params: {
   scene: SceneTemplate;
@@ -24,17 +22,20 @@ export function buildVisualPrompt(params: {
   environment: string;
   emotion: string;
 } {
-  const { scene, continuity, visualStyle, aspectRatio, characters } = params;
-  const styleKey = visualStyle.toUpperCase();
-  const styleDesc = STYLE_DESCRIPTORS[styleKey] || STYLE_DESCRIPTORS.CINEMATIC;
+  const { scene, continuity, aspectRatio, characters } = params;
 
   const continuityParts = [
-    continuity.productVisual,
+    continuity.productReference,
+    continuity.phoneIdentity,
+    continuity.factoryIdentity,
     continuity.environmentVisual,
     continuity.machineVisual,
   ];
-  if (continuity.workerVisual && scene.visualDescription.match(/worker|engineer|technician|factory|assembly|hands|gloved/i)) {
-    continuityParts.push(continuity.workerVisual);
+  if (
+    continuity.characterIdentity &&
+    scene.visualDescription.match(/worker|engineer|technician|factory|assembly|hands|gloved/i)
+  ) {
+    continuityParts.push(continuity.characterIdentity);
   }
   if (continuity.characterVisual && characters?.length) {
     const charTokens = characters
@@ -46,20 +47,24 @@ export function buildVisualPrompt(params: {
 
   const aspectNote =
     aspectRatio?.includes("9:16") || aspectRatio?.includes("9_16")
-      ? "vertical 9:16 framing, manufacturing action centered in mobile safe area, no text to fill frame"
+      ? "vertical 9:16 framing, action centered in safe area, no text fillers"
       : aspectRatio?.includes("16:9") || aspectRatio?.includes("16_9")
         ? "landscape 16:9 widescreen documentary framing"
         : "";
 
   const visualPrompt = [
-    styleDesc,
+    continuity.captureMedium,
+    continuity.lensCharacter,
     scene.visualDescription,
     `Environment: ${scene.environment}`,
     continuityParts.join(". "),
     `Camera: ${scene.cameraAngle}, ${scene.cameraMovement}`,
     `Lighting: ${scene.lighting}`,
+    SIMPLE_MOTION_DIRECTIVE,
     REAL_WORLD_ACTION_SUFFIX,
+    NATURAL_IMPERFECTION_DIRECTIVE,
     NO_TEXT_VISUAL_SUFFIX,
+    HYPER_REALISM_SUFFIX,
     aspectNote,
   ]
     .filter(Boolean)

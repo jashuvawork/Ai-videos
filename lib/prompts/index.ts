@@ -14,12 +14,18 @@ export const storyPrompt = (params: {
   const targetScenes = calculateSceneCount(params.duration, params.generationMode);
   const voiceLine = params.voice ? `- Voice: ${params.voice}` : "- Voice: NONE";
   return `
-You are an expert filmmaker and AI video production director.
+You are a hyper-realistic AI video director and professional documentary filmmaker.
 
-MOST IMPORTANT: NEVER create title cards, text slides, or chapter labels on screen. Tell the story through VISUAL ACTION.
-Show real factory action — machines operating, workers handling parts, conveyors moving — NOT words like "RAW MATERIALS" on a blank background.
-NO visible text in generated scenes: no titles, labels, captions, subtitles, logos, or readable signs unless explicitly requested.
-Narration is optional voice-over only (never on-screen text). Leave narration empty if Voice is NONE.
+The result must look like real camera footage from a documentary crew — NOT an AI slideshow, presentation, or title cards.
+
+RULES:
+- SHOW physical cause-and-effect action; never chapter labels or text on screen
+- Define capture style: professional documentary camera, controlled movement, natural grading
+- One or two subjects with simple deliberate motion per shot
+- Maintain PRODUCT_REFERENCE continuity across scenes
+- caption field MUST be empty string ""
+- Narration is optional voice-over only; empty if Voice is NONE
+- NO visible text in generated visuals
 
 INPUT:
 - Idea: ${params.idea}

@@ -1,56 +1,66 @@
 import type { ContentType, ContinuityBible } from "./types";
+import { buildContinuityIdentities } from "./continuity-engine";
+import { captureMediumForContent, DEFAULT_LENS_CHARACTER } from "./capture-medium";
 import { ABSOLUTE_NEGATIVE_PROMPT } from "./no-text";
 
-const BASE_NEGATIVE = ABSOLUTE_NEGATIVE_PROMPT;
-
 export function buildContinuityBible(contentType: ContentType, idea: string): ContinuityBible {
+  const identities = buildContinuityIdentities(contentType, idea);
+  const captureMedium = captureMediumForContent(contentType);
+
   if (contentType === "manufacturing") {
     return {
       contentType,
       productName: "NovaTech X9",
       brandName: "NovaTech",
-      productVisual:
-        "NovaTech X9 smartphone, matte midnight blue aluminum frame, 6.7 inch edge-to-edge OLED display, triple vertical camera module on back, slim bezels, consistent identical phone model in every shot, no readable branding on screen",
-      environmentVisual:
-        "modern high-tech smartphone manufacturing facility, bright white LED industrial lighting, clean epoxy floors, green conveyor belts, orange six-axis robotic arms actively operating",
-      workerVisual:
-        "factory engineers in navy blue uniforms, white safety helmets, clear safety glasses, natural realistic hands performing tasks, not standing idle",
+      productVisual: identities.phoneIdentity,
+      environmentVisual: identities.factoryIdentity,
+      workerVisual: identities.characterIdentity,
       machineVisual:
-        "precision CNC machines cutting metal, pick-and-place SMT lines running, automated optical inspection, robotic arms on realistic paths placing components with physical contact",
-      packagingVisual:
-        "plain minimalist white retail box without readable text, phone, cable, cardboard inserts, mechanical closing press",
-      negativePromptBase: `${BASE_NEGATIVE}, random smartphone designs, inconsistent phone model, changing phone colors`,
+        "realistic robotic arm cycles: approach grip lift rotate place release, CNC with coolant and metal particles, SMT pick-and-place at realistic speed",
+      packagingVisual: "plain white box no readable text, mechanical lid press, cable and inserts",
+      phoneIdentity: identities.phoneIdentity,
+      factoryIdentity: identities.factoryIdentity,
+      characterIdentity: identities.characterIdentity,
+      productReference: identities.productReference,
+      captureMedium,
+      lensCharacter: DEFAULT_LENS_CHARACTER,
+      negativePromptBase: `${ABSOLUTE_NEGATIVE_PROMPT}, inconsistent NovaTech X9 design, changing phone color`,
       characterVisual: undefined,
     };
   }
 
   if (contentType === "food_process") {
-    const subject = extractFoodSubject(idea);
+    const subject = identities.productReference;
     return {
       contentType,
-      productName: subject,
-      productVisual: `${subject}, consistent appearance, natural food textures, realistic colors, food in motion on belts or being handled`,
-      environmentVisual:
-        "professional food production facility, stainless steel surfaces, steam and natural motion, workers actively processing",
-      workerVisual:
-        "food production workers in white coats, hair nets, hygienic gloves, hands actively handling ingredients",
-      machineVisual: "realistic industrial food processing equipment in continuous operation",
-      negativePromptBase: `${BASE_NEGATIVE}, plastic-looking food, unrealistic food colors, static food pile`,
+      productName: subject.replace("PRODUCT_REFERENCE ", "").split(" —")[0],
+      productVisual: identities.phoneIdentity,
+      environmentVisual: identities.factoryIdentity,
+      workerVisual: identities.characterIdentity,
+      machineVisual: "industrial food equipment in continuous realistic operation",
+      phoneIdentity: identities.phoneIdentity,
+      factoryIdentity: identities.factoryIdentity,
+      characterIdentity: identities.characterIdentity,
+      productReference: identities.productReference,
+      captureMedium,
+      lensCharacter: DEFAULT_LENS_CHARACTER,
+      negativePromptBase: `${ABSOLUTE_NEGATIVE_PROMPT}, plastic-looking food, static food display`,
     };
   }
 
   return {
     contentType,
-    productVisual: idea.split(/[.!?]/)[0].trim(),
-    environmentVisual: "cinematic photorealistic environment, consistent lighting and geography, characters in motion",
-    workerVisual: "realistic human characters with natural proportions and consistent wardrobe",
+    productVisual: identities.phoneIdentity,
+    environmentVisual: identities.factoryIdentity,
+    workerVisual: identities.characterIdentity,
     machineVisual: "physically realistic objects and machinery",
-    characterVisual: "protagonist with consistent face, hair, clothing, and age, physically active not posing",
-    negativePromptBase: BASE_NEGATIVE,
+    characterVisual: identities.characterIdentity,
+    phoneIdentity: identities.phoneIdentity,
+    factoryIdentity: identities.factoryIdentity,
+    characterIdentity: identities.characterIdentity,
+    productReference: identities.productReference,
+    captureMedium,
+    lensCharacter: DEFAULT_LENS_CHARACTER,
+    negativePromptBase: ABSOLUTE_NEGATIVE_PROMPT,
   };
-}
-
-function extractFoodSubject(idea: string): string {
-  const match = idea.match(/\b(chocolate|coffee|bread|pizza|pasta|cheese|wine|beer|cake|cookie|cocoa)\b/i);
-  return match ? match[1] : "artisan food product";
 }

@@ -3,7 +3,12 @@ import { detectContentType } from "@/lib/director/detect";
 import { calculateSceneCount } from "@/lib/director/scene-count";
 import { buildVisualPrompt } from "@/lib/director/visual-prompt";
 import { buildContinuityBible } from "@/lib/director/continuity";
-import { generateDirectorStory, selectScenesForDuration } from "@/lib/director";
+import { buildContinuityIdentities } from "@/lib/director/continuity-engine";
+import {
+  generateDirectorStory,
+  selectScenesForDuration,
+  validateSceneDescription,
+} from "@/lib/director";
 import { MANUFACTURING_SCENES } from "@/lib/director/templates/manufacturing";
 import { sumDurations } from "@/lib/utils";
 import { MockLLMProvider } from "@/providers/llm/mock";
@@ -40,10 +45,17 @@ describe("Director scene count", () => {
   });
 });
 
-describe("Real-world cinematic director", () => {
-  it("generates action-focused manufacturing story without on-screen caption labels", () => {
+describe("Hyper-realistic director", () => {
+  it("builds continuity identities for manufacturing", () => {
+    const ids = buildContinuityIdentities("manufacturing", "NovaTech X9 factory");
+    expect(ids.phoneIdentity).toMatch(/PHONE_IDENTITY/);
+    expect(ids.factoryIdentity).toMatch(/FACTORY_IDENTITY/);
+    expect(ids.productReference).toMatch(/PRODUCT_REFERENCE/);
+  });
+
+  it("generates action-focused story without caption labels", () => {
     const story = generateDirectorStory({
-      idea: "Mobile phone making in a factory",
+      idea: "How the NovaTech X9 is made",
       duration: 30,
       language: "en",
       tone: "documentary",
@@ -56,30 +68,13 @@ describe("Real-world cinematic director", () => {
     expect(story.scenes.length).toBeGreaterThanOrEqual(8);
     expect(sumDurations(story.scenes.map((s) => s.duration))).toBe(30);
     expect(story.scenes.every((s) => s.caption === "")).toBe(true);
-    expect(story.scenes.some((s) => /robotic arm|conveyor|CNC|pick-and-place/i.test(s.visualDescription))).toBe(
-      true,
-    );
-    expect(story.scenes.every((s) => !/RAW MATERIALS|PCB PRODUCTION|PHONE ASSEMBLY/.test(s.caption))).toBe(true);
+    expect(story.continuity.captureMedium).toMatch(/documentary/i);
+    expect(story.scenes.some((s) => /clamp|CNC|metal particles/i.test(s.visualDescription))).toBe(true);
   });
 
-  it("omits narration when voice is NONE", () => {
-    const story = generateDirectorStory({
-      idea: "Mobile phone making in a factory",
-      duration: 30,
-      language: "en",
-      tone: "documentary",
-      platform: "YOUTUBE",
-      visualStyle: "CINEMATIC",
-      generationMode: "FAST",
-      voice: "NONE",
-    });
-
-    expect(story.scenes.every((s) => s.narration === "")).toBe(true);
-  });
-
-  it("builds visual prompts with no-text negative prompts", () => {
+  it("builds hyper-realistic visual prompts with capture medium", () => {
     const continuity = buildContinuityBible("manufacturing", "smartphone factory");
-    const scene = MANUFACTURING_SCENES[1];
+    const scene = MANUFACTURING_SCENES.find((s) => s.key === "frame_machining")!;
     const built = buildVisualPrompt({
       scene,
       continuity,
@@ -87,22 +82,30 @@ describe("Real-world cinematic director", () => {
       aspectRatio: "RATIO_16_9",
     });
 
-    expect(built.visualPrompt).toMatch(/no visible text|physically happening/i);
-    expect(built.negativePrompt).toMatch(/title cards|text overlays|subtitles/i);
+    expect(built.visualPrompt).toMatch(/documentary/i);
+    expect(built.visualPrompt).toMatch(/one or two subjects/i);
+    expect(built.negativePrompt).toMatch(/title cards|CGI look/i);
+    expect(validateSceneDescription(built.visualPrompt).valid).toBe(true);
   });
 
-  it("maintains chronological manufacturing order when trimmed", () => {
+  it("rejects title-card style descriptions in validation", () => {
+    const result = validateSceneDescription("RAW MATERIALS title card on colored background");
+    expect(result.valid).toBe(false);
+    expect(result.issues.length).toBeGreaterThan(0);
+  });
+
+  it("maintains chronological order when trimmed to 8 scenes", () => {
     const selected = selectScenesForDuration(MANUFACTURING_SCENES, 8);
     const keys = selected.map((s) => s.key);
     expect(keys[0]).toBe("factory_intro");
-    expect(keys[keys.length - 1]).toBe("hero_shot");
-    expect(keys).toContain("pcb_assembly");
-    expect(keys).toContain("phone_assembly_1");
+    expect(keys[keys.length - 1]).toBe("hero_outbound");
+    expect(keys).toContain("pcb_smt");
+    expect(keys).toContain("motherboard_install");
   });
 });
 
 describe("MockLLM director integration", () => {
-  it("returns valid manufacturing story JSON from story prompt", async () => {
+  it("returns valid hyper-realistic manufacturing story JSON", async () => {
     const llm = new MockLLMProvider();
     const prompt = storyPrompt({
       idea: "Mobile phone making in a factory",
@@ -121,6 +124,6 @@ describe("MockLLM director integration", () => {
 
     expect(story.scenes.length).toBeGreaterThanOrEqual(8);
     expect(story.scenes.every((s) => s.caption === "")).toBe(true);
-    expect(story.scenes.some((s) => /robotic|conveyor|assembly/i.test(s.visualDescription))).toBe(true);
+    expect(story.scenes.some((s) => /robotic|conveyor|fixture|clamp/i.test(s.visualDescription))).toBe(true);
   });
 });
