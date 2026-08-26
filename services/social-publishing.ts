@@ -67,19 +67,19 @@ export interface PlatformPublisher {
 }
 
 export class InstagramPublisher implements PlatformPublisher {
-  async publish(_pkg: PublishPackage) {
+  async publish(_pkg: PublishPackage): Promise<{ url: string }> {
     throw new Error("Instagram OAuth not configured. Use prepareForPublishing instead.");
   }
 }
 
 export class YouTubePublisher implements PlatformPublisher {
-  async publish(_pkg: PublishPackage) {
+  async publish(_pkg: PublishPackage): Promise<{ url: string }> {
     throw new Error("YouTube OAuth not configured. Use prepareForPublishing instead.");
   }
 }
 
 export class TikTokPublisher implements PlatformPublisher {
-  async publish(_pkg: PublishPackage) {
+  async publish(_pkg: PublishPackage): Promise<{ url: string }> {
     throw new Error("TikTok OAuth not configured. Use prepareForPublishing instead.");
   }
 }
