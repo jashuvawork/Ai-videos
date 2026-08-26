@@ -77,7 +77,39 @@ describe("Hyper-realistic director", () => {
     expect(sumDurations(story.scenes.map((s) => s.duration))).toBe(30);
     expect(story.scenes.every((s) => s.caption === "")).toBe(true);
     expect(story.continuity.captureMedium).toMatch(/documentary/i);
-    expect(story.scenes.some((s) => /clamp|CNC|metal particles/i.test(s.visualDescription))).toBe(true);
+    expect(story.scenes.some((s) => /clamp|CNC|metal particles|robotic|conveyor/i.test(s.visualDescription))).toBe(
+      true,
+    );
+    expect(story.scenes.every((s) => !/RAW MATERIALS|PCB PRODUCTION|PHONE ASSEMBLY/.test(s.caption))).toBe(true);
+  });
+
+  it("omits narration when voice is NONE", () => {
+    const story = generateDirectorStory({
+      idea: "Mobile phone making in a factory",
+      duration: 30,
+      language: "en",
+      tone: "documentary",
+      platform: "YOUTUBE",
+      visualStyle: "CINEMATIC",
+      generationMode: "FAST",
+      voice: "NONE",
+    });
+
+    expect(story.scenes.every((s) => s.narration === "")).toBe(true);
+  });
+
+  it("builds visual prompts with no-text negative prompts", () => {
+    const continuity = buildContinuityBible("manufacturing", "smartphone factory");
+    const scene = MANUFACTURING_SCENES[1];
+    const built = buildVisualPrompt({
+      scene,
+      continuity,
+      visualStyle: "CINEMATIC",
+      aspectRatio: "RATIO_16_9",
+    });
+
+    expect(built.visualPrompt).toMatch(/no visible text|physically happening|documentary/i);
+    expect(built.negativePrompt).toMatch(/title cards|text overlays|subtitles/i);
   });
 
   it("builds hyper-realistic visual prompts with capture medium", () => {
@@ -132,7 +164,9 @@ describe("MockLLM director integration", () => {
 
     expect(story.scenes.length).toBeGreaterThanOrEqual(8);
     expect(story.scenes.every((s) => s.caption === "")).toBe(true);
-    expect(story.scenes.some((s) => /robotic|conveyor|fixture|clamp/i.test(s.visualDescription))).toBe(true);
+    expect(story.scenes.some((s) => /robotic|conveyor|fixture|clamp|assembly/i.test(s.visualDescription))).toBe(
+      true,
+    );
   });
 });
 
@@ -165,9 +199,7 @@ describe("Biscuit manufacturing pipeline", () => {
 
     expect(story.continuity.contentType).toBe("food_process");
     expect(story.scenes.length).toBeGreaterThanOrEqual(8);
-    expect(story.scenes.some((s) => /mixer|dough|conveyor|baking|biscuit/i.test(s.visualDescription))).toBe(
-      true,
-    );
+    expect(story.scenes.some((s) => /mixer|dough|conveyor|baking|biscuit/i.test(s.visualDescription))).toBe(true);
     expect(story.scenes.every((s) => s.caption === "")).toBe(true);
     expect(story.scenes.every((s) => s.sceneKey)).toBe(true);
   });
