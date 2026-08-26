@@ -212,6 +212,7 @@ export class VideoGenerationProcessor {
             height,
             scene.duration,
             referenceUrl,
+            imageAsset.localPath ?? undefined,
           );
         } else {
           videoAsset = await this.visualService.generateVideo(

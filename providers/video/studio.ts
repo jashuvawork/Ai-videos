@@ -3,8 +3,8 @@ import {
   fetchPollinationsImage,
   hashSeed,
   imageBufferToVideo,
-  loadImageBuffer,
 } from "@/providers/studio/ffmpeg-visual";
+import { loadImageBuffer } from "@/providers/studio/image-utils";
 import type { VideoProvider, VideoGenerateOptions, VideoResponse } from "./types";
 
 /**
@@ -19,7 +19,9 @@ export class StudioVideoProvider implements VideoProvider {
 
     let imageBuffer: Buffer;
 
-    if (options.referenceImageUrl) {
+    if (options.referenceImagePath) {
+      imageBuffer = await loadImageBuffer(options.referenceImagePath);
+    } else if (options.referenceImageUrl) {
       imageBuffer = await loadImageBuffer(options.referenceImageUrl);
     } else {
       try {

@@ -1,6 +1,7 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { writeFile, unlink } from "fs/promises";
+import { assertValidImageBuffer, detectImageFormat } from "./image-utils";
 
 const execFileAsync = promisify(execFile);
 
@@ -65,18 +66,19 @@ export async function fetchPollinationsImage(
     throw new Error(`Pollinations image failed: ${response.status}`);
   }
 
-  return Buffer.from(await response.arrayBuffer());
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json") || contentType.includes("text/html")) {
+    throw new Error(`Pollinations returned non-image: ${contentType}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  assertValidImageBuffer(buffer, "Pollinations image");
+  return buffer;
 }
 
 export async function loadImageBuffer(source: string): Promise<Buffer> {
-  if (source.startsWith("http://") || source.startsWith("https://")) {
-    const response = await fetch(source, { signal: AbortSignal.timeout(120000) });
-    if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
-  }
-
-  const { readFile } = await import("fs/promises");
-  return readFile(source);
+  const { loadImageBuffer: load } = await import("./image-utils");
+  return load(source);
 }
 
 export async function imageBufferToVideo(
@@ -88,9 +90,11 @@ export async function imageBufferToVideo(
   cameraMovement = "slow zoom in",
 ): Promise<Buffer> {
   const safeDuration = Math.max(2, Math.min(duration, 12));
-  const inputPath = `/tmp/studio-img-${Date.now()}.png`;
+  const format = detectImageFormat(imageBuffer) ?? { ext: "png" };
+  const inputPath = `/tmp/studio-img-${Date.now()}.${format.ext}`;
   const outputPath = `/tmp/studio-vid-${Date.now()}.mp4`;
 
+  assertValidImageBuffer(imageBuffer, "imageBufferToVideo input");
   await writeFile(inputPath, imageBuffer);
 
   const movement = CAMERA_MOVEMENTS[cameraMovement] || CAMERA_MOVEMENTS["slow zoom in"];
@@ -120,6 +124,10 @@ export async function imageBufferToVideo(
     await unlink(inputPath).catch(() => {});
     await unlink(outputPath).catch(() => {});
   }
+}
+
+export function detectImageFormatFromBuffer(buffer: Buffer) {
+  return detectImageFormat(buffer);
 }
 
 export async function cinematicPlaceholderImage(

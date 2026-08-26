@@ -10,6 +10,6 @@ export async function GET() {
     storageBasePath: getStorageBasePath(),
     storageEnv: env.STORAGE_LOCAL_PATH,
     assetsBaseUrl: env.ASSETS_BASE_URL ?? null,
-    buildTag: "storage-path-fix-v3",
+    buildTag: "blank-video-fix-v1",
   });
 }

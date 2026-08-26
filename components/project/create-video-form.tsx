@@ -178,8 +178,8 @@ export function CreateVideoForm() {
             setForm({
               ...form,
               visualStyle: "PHOTOREALISTIC",
-              generationMode: "CINEMATIC",
-              visualGenerationMode: "AI_VIDEO",
+              generationMode: "FAST",
+              visualGenerationMode: "IMAGES",
             })
           }
         >

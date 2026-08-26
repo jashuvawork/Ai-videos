@@ -2,6 +2,7 @@ import { createProviders } from "@/providers";
 import { storage } from "@/storage";
 import { prisma } from "@/lib/db";
 import { sanitizeFilename } from "@/lib/utils";
+import { detectImageFormatFromBuffer } from "@/providers/studio/ffmpeg-visual";
 import { CostTrackingService } from "./cost-tracking";
 import type { AssetType } from "@/lib/generated/prisma/client";
 
@@ -121,8 +122,11 @@ export class VisualAssetService {
       referenceImageUrl,
     });
 
-    const path = `projects/${projectId}/images/${sceneId}.png`;
-    const stored = await storage.upload(response.imageBuffer, path, "image/png");
+    const format = detectImageFormatFromBuffer(response.imageBuffer);
+    const ext = format?.ext ?? "png";
+    const mime = format?.mime ?? "image/png";
+    const path = `projects/${projectId}/images/${sceneId}.${ext}`;
+    const stored = await storage.upload(response.imageBuffer, path, mime);
 
     const asset = await prisma.asset.create({
       data: {
@@ -165,6 +169,7 @@ export class VisualAssetService {
     height: number,
     duration: number,
     referenceImageUrl?: string,
+    referenceImagePath?: string,
   ) {
     const providers = createProviders();
 
@@ -176,6 +181,7 @@ export class VisualAssetService {
         height,
         duration,
         referenceImageUrl,
+        referenceImagePath,
       });
 
       const path = `projects/${projectId}/videos/${sceneId}.mp4`;

@@ -9,10 +9,10 @@ const envSchema = z.object({
     .string()
     .default("./uploads")
     .transform((v) => {
-      const trimmed = v.trim().replace(/\/$/, "");
+      const trimmed = v.trim().replace(/\/$/, "").replace(/^\.\//, "");
       // Railway misconfig: app/uploads under WORKDIR /app → /app/app/uploads
       if (trimmed === "app/uploads") return "/app/uploads";
-      return trimmed;
+      return v.trim().replace(/\/$/, "");
     }),
   REDIS_URL: z.string().optional(),
   AI_TEXT_PROVIDER: z.string().default("mock"),

@@ -5,6 +5,8 @@ export interface VideoGenerateOptions {
   height: number;
   duration: number;
   referenceImageUrl?: string;
+  /** Prefer local disk path over HTTP URL for reference stills (avoids self-fetch 404 JSON). */
+  referenceImagePath?: string;
 }
 
 export interface VideoResponse {
