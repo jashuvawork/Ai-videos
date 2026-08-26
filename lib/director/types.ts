@@ -15,6 +15,7 @@ export type DirectorInput = {
   visualStyle: string;
   generationMode: string;
   aspectRatio?: string;
+  voice?: string;
 };
 
 export type SceneTemplate = {

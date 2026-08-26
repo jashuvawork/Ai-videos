@@ -1,9 +1,11 @@
 import type { ContinuityBible, SceneTemplate } from "./types";
+import { ABSOLUTE_NEGATIVE_PROMPT, NO_TEXT_VISUAL_SUFFIX, REAL_WORLD_ACTION_SUFFIX } from "./no-text";
 
 const STYLE_DESCRIPTORS: Record<string, string> = {
-  CINEMATIC: "high-end cinematic documentary, photorealistic, 35mm film grain subtle",
-  PHOTOREALISTIC: "photorealistic, ultra detailed textures, natural reflections",
-  REALISTIC: "realistic, natural lighting, physically accurate",
+  CINEMATIC:
+    "photorealistic industrial documentary footage, professionally filmed real factory, subtle 35mm grain, natural motion blur",
+  PHOTOREALISTIC: "photorealistic, ultra detailed textures, natural reflections, real-world footage quality",
+  REALISTIC: "realistic, natural lighting, physically accurate motion",
   ANIMATED: "stylized animation, vibrant colors",
 };
 
@@ -31,7 +33,7 @@ export function buildVisualPrompt(params: {
     continuity.environmentVisual,
     continuity.machineVisual,
   ];
-  if (continuity.workerVisual && scene.visualDescription.match(/worker|engineer|factory|assembly/i)) {
+  if (continuity.workerVisual && scene.visualDescription.match(/worker|engineer|technician|factory|assembly|hands|gloved/i)) {
     continuityParts.push(continuity.workerVisual);
   }
   if (continuity.characterVisual && characters?.length) {
@@ -44,9 +46,9 @@ export function buildVisualPrompt(params: {
 
   const aspectNote =
     aspectRatio?.includes("9:16") || aspectRatio?.includes("9_16")
-      ? "vertical 9:16 framing, subject centered in mobile safe area"
+      ? "vertical 9:16 framing, manufacturing action centered in mobile safe area, no text to fill frame"
       : aspectRatio?.includes("16:9") || aspectRatio?.includes("16_9")
-        ? "landscape 16:9 widescreen framing"
+        ? "landscape 16:9 widescreen documentary framing"
         : "";
 
   const visualPrompt = [
@@ -56,16 +58,16 @@ export function buildVisualPrompt(params: {
     continuityParts.join(". "),
     `Camera: ${scene.cameraAngle}, ${scene.cameraMovement}`,
     `Lighting: ${scene.lighting}`,
-    `Mood: ${scene.emotion}`,
+    REAL_WORLD_ACTION_SUFFIX,
+    NO_TEXT_VISUAL_SUFFIX,
     aspectNote,
-    "physically accurate manufacturing, realistic materials, natural shadows, no floating objects",
   ]
     .filter(Boolean)
     .join(". ");
 
   return {
     visualPrompt,
-    negativePrompt: continuity.negativePromptBase,
+    negativePrompt: `${continuity.negativePromptBase}, ${ABSOLUTE_NEGATIVE_PROMPT}`,
     cameraShot: scene.cameraAngle,
     cameraMovement: scene.cameraMovement,
     lighting: scene.lighting,

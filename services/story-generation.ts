@@ -15,6 +15,7 @@ export interface StoryGenerationInput {
   platform: string;
   visualStyle: string;
   generationMode: string;
+  voice?: string;
   projectId?: string;
 }
 
