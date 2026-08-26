@@ -71,7 +71,7 @@ const VOICES = [
 ];
 
 const MANUFACTURING_IDEA_RE =
-  /\b(factory|manufactur|how .+ (is|are) made|assembly|production line|biscuit|cookie|chocolate|food plant)\b/i;
+  /\b(factory|manufactur|how .+ (is|are) made|assembly|production line|biscuit|cookie|chocolate|food plant|smartphone|mobile phone|cell phone|phone making|pcb|electronics)\b/i;
 
 export function CreateVideoForm() {
   const router = useRouter();
@@ -90,7 +90,7 @@ export function CreateVideoForm() {
     voice: "MALE",
     language: "en",
     generationMode: "FAST",
-    visualGenerationMode: "IMAGES",
+    visualGenerationMode: "AUTOMATIC",
   });
 
   const handleIdeaChange = (idea: string) => {
@@ -106,7 +106,7 @@ export function CreateVideoForm() {
 
   const handleVideoTypeChange = (videoType: string) => {
     const updates: Partial<typeof form> = { videoType };
-    if (videoType === "MANUFACTURING") {
+    if (videoType === "MANUFACTURING" || videoType === "PRODUCT") {
       updates.visualStyle = "DOCUMENTARY";
       updates.voice = "NONE";
       updates.visualGenerationMode = "AI_VIDEO";

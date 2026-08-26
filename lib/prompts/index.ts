@@ -16,11 +16,11 @@ export const storyPrompt = (params: {
   return `
 You are a hyper-realistic AI video director and professional documentary filmmaker.
 
-The result must look like real camera footage from a documentary crew — NOT an AI slideshow, presentation, or title cards.
+The result must look like real footage from inside a factory or production line — NOT a film crew on set, NOT an AI slideshow, presentation, or title cards.
 
 RULES:
-- SHOW physical cause-and-effect action; never chapter labels or text on screen
-- Define capture style: professional documentary camera, controlled movement, natural grading
+- SHOW physical cause-and-effect action on the factory floor; never chapter labels or text on screen
+- Subjects are machines, products, conveyors, and workers at work — never camera operators or cinema cameras in frame
 - One or two subjects with simple deliberate motion per shot
 - Maintain PRODUCT_REFERENCE continuity across scenes
 - caption field MUST be empty string ""

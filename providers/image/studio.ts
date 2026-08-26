@@ -8,7 +8,7 @@ import {
 import type { ImageProvider, ImageGenerateOptions, ImageResponse } from "./types";
 
 const PROCESS_PROMPT_RE =
-  /factory|conveyor|industrial|mixer|dough|biscuit|manufactur|production|stainless|oven|packaging|worker|assembly|ingredient|food-grade|tunnel oven|forming|machining|pcb|smt/i;
+  /factory|conveyor|industrial|mixer|dough|biscuit|manufactur|production|stainless|oven|packaging|worker|assembly|smartphone|mobile phone|cell phone|phone making|pcb|smt|electronics assembly|nova|robotic arm|assembly line/i;
 
 function buildStudioImagePrompt(options: ImageGenerateOptions): string {
   const isProcess = PROCESS_PROMPT_RE.test(options.prompt);
@@ -18,8 +18,10 @@ function buildStudioImagePrompt(options: ImageGenerateOptions): string {
     parts.push(
       "hyper-realistic industrial documentary photograph",
       "active factory production in motion",
+      "machines workers conveyors robotic arms in operation",
       "natural factory lighting",
       "workers operating equipment not posing at camera",
+      "no film crew no camera operator no cinema camera in frame",
       "no visible text no titles no watermarks",
     );
   } else {
@@ -48,6 +50,7 @@ export class StudioImageProvider implements ImageProvider {
         options.width,
         options.height,
         options.seed ?? hashSeed(prompt),
+        options.negativePrompt,
       );
 
       return {

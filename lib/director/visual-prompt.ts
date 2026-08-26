@@ -53,13 +53,13 @@ export function buildVisualPrompt(params: {
         : "";
 
   const visualPrompt = [
-    continuity.captureMedium,
-    continuity.lensCharacter,
     scene.visualDescription,
     `Environment: ${scene.environment}`,
     continuityParts.join(". "),
     `Camera: ${scene.cameraAngle}, ${scene.cameraMovement}`,
     `Lighting: ${scene.lighting}`,
+    continuity.captureMedium,
+    continuity.lensCharacter,
     SIMPLE_MOTION_DIRECTIVE,
     REAL_WORLD_ACTION_SUFFIX,
     NATURAL_IMPERFECTION_DIRECTIVE,

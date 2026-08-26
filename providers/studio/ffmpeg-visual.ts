@@ -30,6 +30,7 @@ export async function fetchPollinationsImage(
   width: number,
   height: number,
   seed?: number,
+  negativePrompt?: string,
 ): Promise<Buffer> {
   const cappedW = Math.min(1280, Math.max(256, width));
   const cappedH = Math.min(1280, Math.max(256, height));
@@ -38,6 +39,9 @@ export async function fetchPollinationsImage(
   url.searchParams.set("height", String(cappedH));
   url.searchParams.set("nologo", "true");
   url.searchParams.set("seed", String(seed ?? hashSeed(prompt)));
+  if (negativePrompt?.trim()) {
+    url.searchParams.set("negative", negativePrompt.slice(0, 500));
+  }
 
   const response = await fetch(url.toString(), {
     signal: AbortSignal.timeout(120000),

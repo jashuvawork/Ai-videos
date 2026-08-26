@@ -11,7 +11,7 @@ import { resolveCameraMovement } from "@/providers/studio/motion-engine";
 import type { VideoProvider, VideoGenerateOptions, VideoResponse } from "./types";
 
 const PROCESS_PROMPT_RE =
-  /factory|conveyor|industrial|mixer|dough|biscuit|manufactur|production|stainless|oven|packaging|worker|assembly/i;
+  /factory|conveyor|industrial|mixer|dough|biscuit|manufactur|production|stainless|oven|packaging|worker|assembly|smartphone|mobile phone|cell phone|phone making|pcb|smt|electronics|nova|robotic arm/i;
 
 /**
  * Motion video: Pollinations stills + documentary camera motion (multi-frame crossfade when possible).

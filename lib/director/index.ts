@@ -209,7 +209,7 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
 
 function injectContinuity(visual: string, continuity: ReturnType<typeof buildContinuityBible>): string {
   if (continuity.contentType === "manufacturing") {
-    return `${visual}. ${continuity.productReference ?? ""}. Same fictional NovaTech X9 throughout. Cause-effect physical steps visible. No readable text. Hyper-realistic documentary footage.`;
+    return `${visual}. ${continuity.productReference ?? ""}. Same fictional NovaTech X9 throughout. Cause-effect physical steps visible. No film crew no camera equipment in frame. No readable text. Hyper-realistic factory documentary footage.`;
   }
   if (continuity.contentType === "food_process") {
     return `${visual}. ${continuity.productReference ?? ""}. Continuous production process with visible cause-effect steps. No readable text. Hyper-realistic documentary footage.`;
@@ -219,10 +219,10 @@ function injectContinuity(visual: string, continuity: ReturnType<typeof buildCon
 
 export const DIRECTOR_SYSTEM_PROMPT = `You are an expert cinematic filmmaker, documentary director, cinematographer, and hyper-realistic AI video director.
 
-FINAL STANDARD: footage must look like a professional documentary crew filmed inside a real location — NOT an AI slideshow, presentation, title cards, or generic stock montage.
+FINAL STANDARD: footage must look like professional documentary shot inside a real factory or production facility — NOT a behind-the-scenes film set, NOT camera operators with tripods, NOT an AI slideshow or title cards.
 
 HYPER-REALISM RULES:
-1. Define HOW footage is captured: professional documentary camera, controlled movement, natural color grading, subtle film grain
+1. Factory floor POV: machines, conveyors, workers at work, products in motion — never film crew equipment in frame
 2. SIMPLE MOTION per shot: one or two subjects, one or two simple actions, minimal camera movement (static or slow tracking)
 3. SHOW actual physical events with believable cause and effect — never title cards or chapter labels on screen
 4. ZERO unrequested visible text in generated visuals
