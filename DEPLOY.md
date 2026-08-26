@@ -20,7 +20,7 @@
 
 The combined `Dockerfile.railway` runs:
 
-- `npx prisma migrate deploy` — apply DB schema on boot
+- `npx prisma db push` — sync DB schema on boot (no migration history required)
 - `npm start` — Next.js on port 8080
 - `npm run worker:poll` — background job processor (FFmpeg rendering)
 
