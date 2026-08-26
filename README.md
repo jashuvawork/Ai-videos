@@ -44,15 +44,19 @@ The system automatically:
 
 ### Provider Abstraction
 
-Providers are swappable via environment variables:
+**Default: Studio stack (no API keys)** — scripts, Pollinations images, FFmpeg motion, Edge TTS.
 
-| Variable | Options |
-|----------|---------|
-| `AI_TEXT_PROVIDER` | `mock`, `openai` |
-| `AI_IMAGE_PROVIDER` | `mock` (+ future: stability, dalle) |
-| `AI_VIDEO_PROVIDER` | `mock` (+ future: runway, pika) |
-| `AI_VOICE_PROVIDER` | `mock` (+ future: elevenlabs) |
-| `AI_MUSIC_PROVIDER` | `mock` |
+| Variable | Default | Options |
+|----------|---------|---------|
+| `AI_TEXT_PROVIDER` | `studio` | `studio` (free), `openai`, `mock` |
+| `AI_IMAGE_PROVIDER` | `studio` | `studio` (Pollinations), `dalle`, `mock` |
+| `AI_VIDEO_PROVIDER` | `studio` | `studio` (FFmpeg motion), `runway`, `mock` |
+| `AI_VOICE_PROVIDER` | `edge` | `edge` (free TTS), `elevenlabs`, `mock` |
+| `AI_MUSIC_PROVIDER` | `studio` | `studio`, `mock` |
+
+Paid providers (optional): set `OPENAI_API_KEY`, `RUNWAY_API_KEY`, `ELEVENLABS_API_KEY`.
+
+**Note:** Cursor Composer / GenerateImage is an IDE tool only — it cannot be called from your deployed app. This project uses its own built-in Studio providers instead.
 
 ### Job Pipeline
 
