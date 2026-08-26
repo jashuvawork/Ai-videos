@@ -1,4 +1,4 @@
-import type { SceneTemplate } from "./types";
+import type { SceneTemplate } from "../types";
 
 /**
  * Full smartphone manufacturing pipeline — chronological production story.
