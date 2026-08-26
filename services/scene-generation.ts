@@ -1,4 +1,8 @@
 import { createProviders } from "@/providers";
+import { buildContinuityBible } from "@/lib/director/continuity";
+import { detectContentType } from "@/lib/director/detect";
+import { buildVisualPrompt } from "@/lib/director/visual-prompt";
+import type { SceneTemplate } from "@/lib/director/types";
 import { sceneVisualPrompt } from "@/lib/prompts";
 import { VisualPromptSchema } from "@/lib/schemas";
 import { parseAiJson } from "@/lib/utils";
@@ -16,12 +20,45 @@ export class SceneGenerationService {
     visualStyle: string,
     aspectRatio: string,
     projectId?: string,
+    idea?: string,
   ) {
     const providers = createProviders();
 
-    // Studio scripts already include visual descriptions — skip slow per-scene LLM calls
     if (providers.llm.name === "studio") {
+      const contentType = idea ? detectContentType(idea) : "narrative";
+      const continuity = idea ? buildContinuityBible(contentType, idea) : null;
+      const useDirectorPrompts =
+        continuity &&
+        (contentType === "manufacturing" || contentType === "food_process");
+
       return scenes.map((scene) => {
+        if (useDirectorPrompts) {
+          const template = sceneToTemplate(scene);
+          const built = buildVisualPrompt({
+            scene: template,
+            continuity,
+            visualStyle,
+            aspectRatio,
+            characters,
+          });
+          const visualPrompt = this.characterService.enrichPromptWithCharacters(
+            built.visualPrompt,
+            characters,
+          );
+          return {
+            sceneNumber: scene.sceneNumber,
+            visualPrompt,
+            negativePrompt: built.negativePrompt,
+            duration: scene.duration,
+            cameraShot: built.cameraShot,
+            cameraMovement: built.cameraMovement,
+            lighting: built.lighting,
+            environment: built.environment,
+            emotion: built.emotion,
+            transition: scene.transition || "cut",
+          };
+        }
+
         const base = scene.visualDescription || scene.narration || "cinematic scene";
         const visualPrompt = this.characterService.enrichPromptWithCharacters(
           `cinematic photorealistic ${visualStyle.toLowerCase()}, ${base}, dramatic lighting, high detail`,
@@ -31,7 +68,7 @@ export class SceneGenerationService {
           sceneNumber: scene.sceneNumber,
           visualPrompt,
           negativePrompt:
-            "text, watermark, blurry, deformed hands, duplicate face, low quality, cartoon",
+            "text, watermark, blurry, deformed hands, duplicate face, low quality, cartoon, floating objects",
           duration: scene.duration,
           cameraShot: scene.cameraAngle || "medium shot",
           cameraMovement: scene.cameraMovement || "slow zoom in",
@@ -91,4 +128,23 @@ export class SceneGenerationService {
 
     return results;
   }
+}
+
+function sceneToTemplate(scene: SceneData): SceneTemplate {
+  return {
+    key: `scene_${scene.sceneNumber}`,
+    purpose: scene.caption || "scene",
+    priority: 1,
+    narration: scene.narration || "",
+    visualDescription: scene.visualDescription,
+    cameraMovement: scene.cameraMovement || "slow tracking",
+    cameraAngle: scene.cameraAngle || "medium shot",
+    lighting: scene.lighting || "cinematic",
+    environment: scene.environment || "",
+    soundEffects: scene.soundEffects || [],
+    musicMood: scene.musicMood || "cinematic",
+    caption: scene.caption || "",
+    emotion: scene.emotion || "neutral",
+    transition: scene.transition || "cut",
+  };
 }
