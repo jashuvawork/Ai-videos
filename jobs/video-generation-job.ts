@@ -19,6 +19,7 @@ import { VideoQAService } from "@/services/video-qa";
 import { ReferenceStyleProfileSchema } from "@/lib/schemas/reference-style";
 import { JOB_STEP_ORDER, stepProgress } from "./queue";
 import type { JobStep } from "@/lib/generated/prisma/client";
+import { shouldGenerateSceneVideos } from "@/lib/video-generation-mode";
 
 export class VideoGenerationProcessor {
   private storyService = new StoryGenerationService();
@@ -182,10 +183,12 @@ export class VideoGenerationProcessor {
     }
 
     const { width, height } = getResolution(project.aspectRatio);
-    const useVideo =
-      project.generationMode !== "FAST" &&
-      (project.visualGenerationMode === "AI_VIDEO" ||
-        (project.visualGenerationMode === "AUTOMATIC" && project.generationMode === "CINEMATIC"));
+    const useVideo = shouldGenerateSceneVideos({
+      idea: project.idea,
+      videoType: project.videoType,
+      generationMode: project.generationMode,
+      visualGenerationMode: project.visualGenerationMode,
+    });
 
     // GENERATE_VISUALS
     await this.updateStep(jobId, "GENERATE_VISUALS");

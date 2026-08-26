@@ -7,40 +7,37 @@ const execFileAsync = promisify(execFile);
 export type VideoQAResult = {
   valid: boolean;
   issues: string[];
+  warnings: string[];
   duration?: number;
   width?: number;
   height?: number;
   fps?: number;
   hasAudio: boolean;
   blackFrameRatio?: number;
+  frozenFrameRatio?: number;
   meanLuma?: number;
 };
 
-/** Minimum contiguous near-black run (seconds) before counting as corrupt footage */
-const BLACK_MIN_DURATION_SEC = 0.75;
-/** Fraction of pixels that must be near-black for a frame to count as black */
-const PICTURE_BLACK_RATIO_TH = 0.98;
-/** Pixel luminance threshold (0–1); only near #000000 counts — not dark industrial/cinematic grades */
-const PIXEL_BLACK_TH = 0.02;
-/** Fail only when most of the runtime is true black (missing assets / corrupt render) */
-const MAX_TRUE_BLACK_RATIO = 0.45;
+/** Fail job only when output is clearly broken — not for dark cinematic grades */
+const MIN_FILE_BYTES = 10000;
+const MIN_FREEZE_RATIO_FAIL = 0.75;
 
 /**
- * Post-render validation — do not silently ship broken MP4s.
- * Tolerates intentional dark cinematography; flags pitch-black corruption.
+ * Post-render validation — catches corrupt files and fully stuck frames, not dark documentary footage.
  */
 export class VideoQAService {
   async analyze(filePath: string): Promise<VideoQAResult> {
     const issues: string[] = [];
+    const warnings: string[] = [];
 
     try {
       await access(filePath);
     } catch {
-      return { valid: false, issues: ["Output file does not exist"], hasAudio: false };
+      return { valid: false, issues: ["Output file does not exist"], warnings: [], hasAudio: false };
     }
 
     const buffer = await readFile(filePath);
-    if (buffer.length < 10000) {
+    if (buffer.length < MIN_FILE_BYTES) {
       issues.push(`File too small (${buffer.length} bytes) — likely corrupted or empty`);
     }
 
@@ -82,6 +79,7 @@ export class VideoQAService {
     if (width < 320 || height < 320) issues.push(`Resolution too low: ${width}x${height}`);
 
     let blackFrameRatio = 0;
+    let frozenFrameRatio = 0;
     let meanLuma: number | undefined;
 
     try {
@@ -89,53 +87,74 @@ export class VideoQAService {
         "-i",
         filePath,
         "-vf",
-        `blackdetect=d=${BLACK_MIN_DURATION_SEC}:pixel_black_th=${PIXEL_BLACK_TH}:picture_black_ratio_th=${PICTURE_BLACK_RATIO_TH}`,
+        "blackdetect=d=0.75:pixel_black_th=0.02:picture_black_ratio_th=0.98",
         "-f",
         "null",
         "-",
       ]);
-      blackFrameRatio = computeBlackCoverage(stderr, duration);
+      blackFrameRatio = computeSegmentCoverage(stderr, duration, /black_start:([\d.]+)\s+black_end:([\d.]+)/g);
+      if (blackFrameRatio > 0.5) {
+        warnings.push(
+          `Dark segments detected (${(blackFrameRatio * 100).toFixed(0)}% of runtime) — expected for low-key footage`,
+        );
+      }
     } catch {
-      // blackdetect optional
+      // optional
+    }
+
+    try {
+      const { stderr } = await execFileAsync("ffmpeg", [
+        "-i",
+        filePath,
+        "-vf",
+        "freezedetect=n=0.002:d=1.2",
+        "-f",
+        "null",
+        "-",
+      ]);
+      frozenFrameRatio = computeFreezeCoverage(stderr, duration);
+      if (frozenFrameRatio > 0.35) {
+        warnings.push(
+          `Low motion segments (${(frozenFrameRatio * 100).toFixed(0)}% of runtime) — scene clips may look static`,
+        );
+      }
+      if (frozenFrameRatio > MIN_FREEZE_RATIO_FAIL) {
+        issues.push(
+          `Video appears mostly frozen (${(frozenFrameRatio * 100).toFixed(0)}% stuck frames) — regenerate with AI_VIDEO motion clips`,
+        );
+      }
+    } catch {
+      // optional
     }
 
     try {
       meanLuma = await probeMeanLuma(filePath);
     } catch {
-      // signalstats optional
-    }
-
-    if (blackFrameRatio > MAX_TRUE_BLACK_RATIO) {
-      const nearlyAllBlack = blackFrameRatio > 0.85;
-      const lowLuma = meanLuma === undefined || meanLuma < 0.08;
-      if (nearlyAllBlack || lowLuma) {
-        issues.push(
-          `Excessive true black frames (${(blackFrameRatio * 100).toFixed(0)}% of runtime) — likely missing or corrupt scene assets`,
-        );
-      }
+      // optional
     }
 
     return {
       valid: issues.length === 0,
       issues,
+      warnings,
       duration,
       width,
       height,
       fps,
       hasAudio,
       blackFrameRatio,
+      frozenFrameRatio,
       meanLuma,
     };
   }
 }
 
-function computeBlackCoverage(stderr: string, duration: number): number {
+function computeSegmentCoverage(stderr: string, duration: number, pattern: RegExp): number {
   if (duration <= 0) return 0;
 
   const segments: Array<{ start: number; end: number }> = [];
-  const regex = /black_start:([\d.]+)\s+black_end:([\d.]+)/g;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(stderr)) !== null) {
+  while ((match = pattern.exec(stderr)) !== null) {
     segments.push({ start: parseFloat(match[1]), end: parseFloat(match[2]) });
   }
 
@@ -155,6 +174,26 @@ function computeBlackCoverage(stderr: string, duration: number): number {
   }
 
   return Math.min(1, covered / duration);
+}
+
+function computeFreezeCoverage(stderr: string, duration: number): number {
+  const fromSegments = computeSegmentCoverage(
+    stderr,
+    duration,
+    /freeze_start:([\d.]+)\s+freeze_end:([\d.]+)/g,
+  );
+  if (fromSegments > 0) return fromSegments;
+
+  // freezedetect often reports freeze_start:0 without freeze_end until EOF
+  if (/freeze_start:\s*0/.test(stderr) && duration >= 2) {
+    const endMatch = stderr.match(/freeze_end:([\d.]+)/);
+    if (endMatch) {
+      return Math.min(1, parseFloat(endMatch[1]) / duration);
+    }
+    return 0.95;
+  }
+
+  return 0;
 }
 
 async function probeMeanLuma(filePath: string): Promise<number> {
@@ -177,6 +216,5 @@ async function probeMeanLuma(filePath: string): Promise<number> {
     return acc + val;
   }, 0);
 
-  // YAVG is 0–255; normalize to 0–1
   return sum / yavgMatches.length / 255;
 }

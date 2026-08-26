@@ -1,19 +1,10 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { writeFile, unlink } from "fs/promises";
+import { writeFile, unlink, readFile } from "fs/promises";
 import { assertValidImageBuffer, detectImageFormat } from "./image-utils";
+import { buildMotionFilterChain } from "./motion-engine";
 
 const execFileAsync = promisify(execFile);
-
-const CAMERA_MOVEMENTS: Record<string, string> = {
-  "slow zoom in": "zoompan=z='min(zoom+0.001,1.3)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow zoom out": "zoompan=z='if(lte(zoom,1.0),1.3,max(1.001,zoom-0.001))':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow pan left": "zoompan=z='1.1':d=125:x='if(gte(on,1),x-1,x)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow pan right": "zoompan=z='1.1':d=125:x='if(gte(on,1),x+1,x)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "push in": "zoompan=z='min(zoom+0.002,1.4)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "pull out": "zoompan=z='if(lte(zoom,1.0),1.4,max(1.001,zoom-0.002))':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "vertical pan": "zoompan=z='1.1':d=125:x='iw/2-(iw/zoom/2)':y='if(gte(on,1),y-1,y)':s={w}x{h}",
-};
 
 export function hashSeed(text: string): number {
   let hash = 0;
@@ -88,12 +79,8 @@ export async function imageBufferToVideo(
   assertValidImageBuffer(imageBuffer, "imageBufferToVideo input");
   await writeFile(inputPath, imageBuffer);
 
-  const movement = CAMERA_MOVEMENTS[cameraMovement] || CAMERA_MOVEMENTS["slow zoom in"];
   const totalFrames = Math.ceil(safeDuration * fps);
-  const zoomFilter = movement
-    .replace(/\{w\}/g, String(width))
-    .replace(/\{h\}/g, String(height))
-    .replace("d=125", `d=${totalFrames}`);
+  const vf = buildMotionFilterChain(width, height, totalFrames, cameraMovement);
 
   try {
     await execFileAsync("ffmpeg", [
@@ -101,7 +88,7 @@ export async function imageBufferToVideo(
       "-loop", "1",
       "-i", inputPath,
       "-vf",
-      `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},${zoomFilter}`,
+      vf,
       "-c:v", "libx264",
       "-pix_fmt", "yuv420p",
       "-t", String(safeDuration),
@@ -109,10 +96,65 @@ export async function imageBufferToVideo(
       outputPath,
     ]);
 
-    const { readFile } = await import("fs/promises");
     return await readFile(outputPath);
   } finally {
     await unlink(inputPath).catch(() => {});
+    await unlink(outputPath).catch(() => {});
+  }
+}
+
+/**
+ * Crossfade two motion clips — simulates continued action when true AI video is unavailable.
+ */
+export async function dualImageBufferToVideo(
+  imageA: Buffer,
+  imageB: Buffer,
+  width: number,
+  height: number,
+  duration: number,
+  fps = 30,
+  cameraMovement = "tracking lateral",
+): Promise<Buffer> {
+  const safeDuration = Math.max(3, Math.min(duration, 12));
+  const fade = Math.min(0.35, safeDuration * 0.12);
+  const half = safeDuration / 2;
+  const clipAPath = `/tmp/studio-dual-a-${Date.now()}.mp4`;
+  const clipBPath = `/tmp/studio-dual-b-${Date.now()}.mp4`;
+  const outputPath = `/tmp/studio-dual-out-${Date.now()}.mp4`;
+
+  const clipA = await imageBufferToVideo(imageA, width, height, half + fade / 2, fps, cameraMovement);
+  const clipB = await imageBufferToVideo(
+    imageB,
+    width,
+    height,
+    half + fade / 2,
+    fps,
+    cameraMovement.includes("tracking") ? "tracking lateral" : cameraMovement,
+  );
+
+  await writeFile(clipAPath, clipA);
+  await writeFile(clipBPath, clipB);
+
+  const offset = Math.max(0.1, half - fade / 2);
+
+  try {
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-i", clipAPath,
+      "-i", clipBPath,
+      "-filter_complex",
+      `[0:v][1:v]xfade=transition=fade:duration=${fade}:offset=${offset}[v]`,
+      "-map", "[v]",
+      "-c:v", "libx264",
+      "-pix_fmt", "yuv420p",
+      "-t", String(safeDuration),
+      "-r", String(fps),
+      outputPath,
+    ]);
+    return await readFile(outputPath);
+  } finally {
+    await unlink(clipAPath).catch(() => {});
+    await unlink(clipBPath).catch(() => {});
     await unlink(outputPath).catch(() => {});
   }
 }
