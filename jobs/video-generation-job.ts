@@ -103,6 +103,7 @@ export class VideoGenerationProcessor {
       platform: project.platform,
       visualStyle: project.visualStyle,
       generationMode: project.generationMode,
+      voice: project.voice,
       projectId,
     });
 
@@ -356,7 +357,7 @@ export class VideoGenerationProcessor {
       scenes: renderScenes,
       musicPath: musicAsset?.localPath ?? undefined,
       subtitles: subtitleEntries,
-      burnSubtitles: true,
+      burnSubtitles: false,
     });
 
     const render = await prisma.render.create({
@@ -504,7 +505,7 @@ export class VideoGenerationProcessor {
         startTime: s.startTime,
         endTime: s.endTime,
       })),
-      burnSubtitles: true,
+      burnSubtitles: false,
     });
 
     const render = await prisma.render.create({

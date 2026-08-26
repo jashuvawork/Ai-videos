@@ -72,11 +72,11 @@ export class MockLLMProvider implements LLMProvider {
     const idea = extractIdea(options.prompt) || "cinematic scene";
     const visual = {
       visualPrompt:
-        "photorealistic industrial documentary, " +
+        "photorealistic real-world documentary footage, active physical motion, " +
         idea +
-        ", realistic materials, natural shadows, high detail, professional lighting",
+        ", realistic materials, natural shadows, no visible text, no titles, no labels",
       negativePrompt:
-        "cartoon, animation, floating objects, deformed hands, extra fingers, duplicate person, watermark, low quality, inconsistent product",
+        "title cards, text overlays, captions, subtitles, typography, labels, watermark, cartoon, floating objects, deformed hands, extra fingers, static shot with no action, blank background, low quality",
       cameraShot: "medium shot",
       cameraMovement: "slow tracking",
       lighting: "cinematic industrial",
@@ -99,6 +99,7 @@ function extractDirectorInput(prompt: string) {
     visualStyle: extractField(prompt, "Visual Style") || "CINEMATIC",
     generationMode: extractGenerationMode(prompt),
     aspectRatio: extractField(prompt, "Aspect Ratio") || undefined,
+    voice: extractField(prompt, "Voice") || "NONE",
   };
 }
 

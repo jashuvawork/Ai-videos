@@ -126,6 +126,22 @@ function buildCharacters(contentType: string, continuity: ReturnType<typeof buil
   ];
 }
 
+function shouldIncludeNarration(input: DirectorInput, contentType: string): boolean {
+  const voice = input.voice?.toUpperCase();
+  if (voice === "NONE") return false;
+  // Process documentaries default to environmental sound unless voice explicitly chosen
+  if (contentType === "manufacturing" || contentType === "food_process") {
+    return Boolean(voice && voice !== "NONE");
+  }
+  return true;
+}
+
+function sceneCaption(contentType: string): string {
+  // Never use on-screen chapter labels — story is told through visuals
+  if (contentType === "manufacturing" || contentType === "food_process") return "";
+  return "";
+}
+
 export function generateDirectorStory(input: DirectorInput): DirectorStory {
   const contentType = detectContentType(input.idea);
   const continuity = buildContinuityBible(contentType, input.idea);
@@ -134,6 +150,7 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
   const selected = selectScenesForDuration(templates, sceneCount);
   const durations = distributeDurations(input.duration, selected.length);
   const vertical = isVerticalPlatform(input.platform);
+  const includeNarration = shouldIncludeNarration(input, contentType);
   const tone =
     contentType === "manufacturing" || contentType === "food_process"
       ? "industrial documentary"
@@ -142,7 +159,7 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
   const scenes = selected.map((template, i) => ({
     sceneNumber: i + 1,
     duration: durations[i],
-    narration: template.narration,
+    narration: includeNarration ? template.narration : "",
     dialogue: "",
     visualDescription: injectContinuity(template.visualDescription, continuity),
     cameraMovement: template.cameraMovement,
@@ -151,7 +168,7 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
     environment: template.environment,
     soundEffects: template.soundEffects,
     musicMood: template.musicMood,
-    caption: template.caption,
+    caption: sceneCaption(contentType),
     transition: i === selected.length - 1 ? "fade" : template.transition,
     emotion: template.emotion,
     sceneKey: template.key,
@@ -171,32 +188,26 @@ export function generateDirectorStory(input: DirectorInput): DirectorStory {
 
 function injectContinuity(visual: string, continuity: ReturnType<typeof buildContinuityBible>): string {
   if (continuity.contentType === "manufacturing") {
-    return `${visual}. Maintain exact same NovaTech X9 phone model: midnight blue frame, triple vertical cameras, 6.7 inch display, silver NovaTech logo. Same factory environment throughout.`;
+    return `${visual}. Same NovaTech X9 phone throughout: midnight blue frame, triple vertical cameras, 6.7 inch display. Same factory. Active machines and workers. No readable text on devices, boxes, or signs.`;
   }
   return visual;
 }
 
-export const DIRECTOR_SYSTEM_PROMPT = `You are an expert AI video director, industrial documentary filmmaker, screenwriter, and cinematographer.
+export const DIRECTOR_SYSTEM_PROMPT = `You are an expert filmmaker and AI video production director.
 
-CORE RULE: Never output one random scene. Transform the user's idea into a complete, logically connected multi-scene production with strict visual continuity.
+MOST IMPORTANT: NEVER create title cards, text slides, chapter labels, or captions on screen. The story must be told through VISUAL ACTION only.
 
-For manufacturing ideas (factory, smartphone, assembly):
-- Expand into full production pipeline: raw materials → components → PCB → display → battery → camera → phone assembly → QC → cleaning → packaging → hero shot
-- SAME product model, color, camera layout, factory, workers, and machines in every scene
-- Photorealistic industrial documentary style
+For manufacturing / factory ideas:
+- Show actual raw materials, machinery, workers, robotic arms, conveyors, and operations — NOT words like "RAW MATERIALS" on a blank background
+- Every scene must have meaningful physical activity; machines operating, hands handling parts, conveyors moving
+- Chronological production pipeline with strict product continuity (same phone model, factory, workers)
+- Photorealistic footage that looks like a real factory was filmed
 
-For food/process ideas:
-- Source → transport → prep → processing → refining → forming → cooling → packaging → hero product
+NO TEXT BY DEFAULT: no titles, labels, captions, subtitles, logos, watermarks, or readable UI in generated visuals.
+Narration is optional voice-over only — never put narration text on screen.
+If voice is not requested, leave narration empty and rely on environmental factory sounds.
 
-For narrative ideas:
-- Hook → character → discovery → escalation → climax → resolution with consistent characters
-
-Scene count must match duration:
-- 30s: 8-10 scenes
-- 60s: 12-15 scenes
-- 120s: 18-25 scenes
-- 300s+: 30+ scenes
-
-Each scene: narration matching visible action, detailed visualDescription, camera, lighting, environment, caption labels for process videos.
+Scene count by duration: 30s→8-10, 60s→12-15, 120s→18-25, 300s+→30+ scenes.
+Each scene: detailed action-focused visualDescription, camera, lighting, environment. caption field must be empty string.
 
 Always return valid JSON matching the requested schema.`;
