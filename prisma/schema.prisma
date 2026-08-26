@@ -1,0 +1,356 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProjectStatus {
+  DRAFT
+  GENERATING
+  RENDERING
+  COMPLETED
+  FAILED
+}
+
+enum VideoType {
+  STORY
+  CINEMATIC
+  EDUCATIONAL
+  MOTIVATION
+  DOCUMENTARY
+  ADVERTISEMENT
+  PRODUCT
+  NEWS
+  QUOTE
+  HORROR
+  COMEDY
+  CUSTOM
+}
+
+enum Platform {
+  INSTAGRAM_REEL
+  YOUTUBE_SHORT
+  YOUTUBE
+  TIKTOK
+  CUSTOM
+}
+
+enum AspectRatio {
+  RATIO_9_16
+  RATIO_16_9
+  RATIO_1_1
+}
+
+enum VisualStyle {
+  CINEMATIC
+  PHOTOREALISTIC
+  ANIME
+  THREE_D
+  PIXAR_LIKE
+  DOCUMENTARY
+  DARK_CINEMATIC
+  FANTASY
+  SCI_FI
+  VINTAGE
+  MINIMAL
+  CUSTOM
+}
+
+enum VoiceType {
+  MALE
+  FEMALE
+  NEUTRAL
+  NONE
+}
+
+enum GenerationMode {
+  FAST
+  CINEMATIC
+}
+
+enum VisualGenerationMode {
+  IMAGES
+  AI_VIDEO
+  AUTOMATIC
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  RETRYING
+}
+
+enum JobType {
+  VIDEO_GENERATION
+  SCENE_REGENERATION
+  ASSET_GENERATION
+  RENDER
+  THUMBNAIL
+  METADATA
+}
+
+enum JobStep {
+  CREATE_SCRIPT
+  CREATE_CHARACTER_BIBLE
+  CREATE_SCENES
+  GENERATE_VISUALS
+  GENERATE_VOICE
+  GENERATE_MUSIC
+  GENERATE_SFX
+  GENERATE_SUBTITLES
+  BUILD_TIMELINE
+  RENDER_VIDEO
+  GENERATE_THUMBNAIL
+  GENERATE_METADATA
+  COMPLETE
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  AUDIO
+  VOICE
+  MUSIC
+  SFX
+  SUBTITLE
+  THUMBNAIL
+}
+
+enum SubtitleStyle {
+  CLEAN_WHITE
+  BOLD_SOCIAL
+  HIGHLIGHTED_WORD
+  CINEMATIC
+  MINIMAL
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String?   @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+  characters Character[]
+}
+
+model Project {
+  id                   String               @id @default(cuid())
+  userId               String
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                String?
+  idea                 String
+  status               ProjectStatus        @default(DRAFT)
+  videoType            VideoType            @default(STORY)
+  platform             Platform             @default(INSTAGRAM_REEL)
+  aspectRatio          AspectRatio          @default(RATIO_9_16)
+  duration             Int                  @default(30)
+  visualStyle          VisualStyle          @default(CINEMATIC)
+  voice                VoiceType            @default(MALE)
+  language             String               @default("en")
+  generationMode       GenerationMode       @default(FAST)
+  visualGenerationMode VisualGenerationMode @default(AUTOMATIC)
+  script               Json?
+  hook                 String?
+  summary              String?
+  tone                 String?
+  version              Int                  @default(1)
+  estimatedCost        Float                @default(0)
+  actualCost           Float                @default(0)
+  thumbnailUrl         String?
+  finalVideoUrl        String?
+  errorMessage         String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  characters           Character[]
+  scenes               Scene[]
+  assets               Asset[]
+  jobs                 GenerationJob[]
+  renders              Render[]
+  socialMetadata       SocialMetadata?
+  subtitles            Subtitle[]
+  costEntries          CostEntry[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Character {
+  id               String   @id @default(cuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  projectId        String?
+  project          Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name             String
+  age              Int?
+  gender           String?
+  appearance       String?
+  hair             String?
+  clothing         String?
+  bodyType         String?
+  facialFeatures   String?
+  personality      String?
+  visualIdentity   String?
+  visualToken      String?
+  referenceAssetId String?
+  isReusable       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Scene {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneNumber        Int
+  duration           Float
+  narration          String?
+  dialogue           String?
+  visualDescription  String?
+  visualPrompt       String?
+  negativePrompt     String?
+  cameraMovement     String?
+  cameraAngle        String?
+  lighting           String?
+  environment        String?
+  soundEffects       Json?
+  musicMood          String?
+  caption            String?
+  transition         String?  @default("cut")
+  emotion            String?
+  characterIds       Json?
+  imageAssetId       String?
+  videoAssetId       String?
+  voiceAssetId       String?
+  status             String   @default("pending")
+  alternatives       Json?
+  selectedAlternative Int?    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([projectId])
+  @@unique([projectId, sceneNumber])
+}
+
+model Asset {
+  id           String    @id @default(cuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId      String?
+  type         AssetType
+  provider     String?
+  url          String?
+  localPath    String?
+  mimeType     String?
+  fileSize     Int?
+  duration     Float?
+  width        Int?
+  height       Int?
+  metadata     Json?
+  isMock       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([sceneId])
+}
+
+model Subtitle {
+  id        String        @id @default(cuid())
+  projectId String
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId   String?
+  text      String
+  startTime Float
+  endTime   Float
+  words     Json?
+  style     SubtitleStyle @default(CLEAN_WHITE)
+  createdAt DateTime      @default(now())
+
+  @@index([projectId])
+}
+
+model GenerationJob {
+  id           String    @id @default(cuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type         JobType
+  status       JobStatus @default(PENDING)
+  step         JobStep?
+  progress     Int       @default(0)
+  sceneId      String?
+  error        String?
+  retryCount   Int       @default(0)
+  maxRetries   Int       @default(3)
+  metadata     Json?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model Render {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version     Int
+  videoUrl    String?
+  localPath   String?
+  thumbnailUrl String?
+  width       Int?
+  height      Int?
+  duration    Float?
+  fileSize    Int?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model SocialMetadata {
+  id                  String  @id @default(cuid())
+  projectId           String  @unique
+  project             Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  youtubeTitle        String?
+  youtubeDescription  String?
+  youtubeHashtags     String?
+  instagramCaption    String?
+  instagramHashtags   String?
+  tiktokCaption       String?
+  tiktokHashtags      String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model CostEntry {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category  String
+  provider  String?
+  operation String
+  amount    Float
+  units     Float?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model AppSettings {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
