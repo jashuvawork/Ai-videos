@@ -2,6 +2,9 @@
   "buildCommand": "prisma generate && next build",
   "framework": "nextjs",
   "regions": ["iad1"],
+  "env": {
+    "ASSETS_BASE_URL": "https://ai-video-backend-production-96e9.up.railway.app"
+  },
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 60

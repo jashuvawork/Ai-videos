@@ -4,6 +4,7 @@ import { env } from "@/config/env";
 import { videoLog } from "@/lib/logger";
 import { resolvePublicFileUrl } from "@/lib/public-url";
 import { mapWithConcurrency } from "@/lib/concurrency";
+import { findReadableLocalPath } from "@/storage/paths";
 import { StoryGenerationService } from "@/services/story-generation";
 import { CharacterConsistencyService } from "@/services/character-consistency";
 import { SceneGenerationService } from "@/services/scene-generation";
@@ -378,6 +379,14 @@ export class VideoGenerationProcessor {
       },
     });
 
+    const videoAssetPath = `projects/${projectId}/renders/v${project.version}/final.mp4`;
+    const verifiedPath = await findReadableLocalPath(videoAssetPath, [renderResult.videoPath]);
+    if (!verifiedPath) {
+      throw new Error(
+        `Rendered video missing on disk at ${renderResult.videoPath}. Check STORAGE_LOCAL_PATH.`,
+      );
+    }
+
     // GENERATE_THUMBNAIL
     await this.updateStep(jobId, "GENERATE_THUMBNAIL");
     await this.thumbnailService.generate(projectId, project.version);
@@ -509,6 +518,22 @@ export class VideoGenerationProcessor {
         fileSize: renderResult.fileSize,
       },
     });
+
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        finalVideoUrl: render.videoUrl,
+        thumbnailUrl: render.thumbnailUrl,
+      },
+    });
+
+    const videoAssetPath = `projects/${projectId}/renders/v${version}/final.mp4`;
+    const verifiedPath = await findReadableLocalPath(videoAssetPath, [renderResult.videoPath]);
+    if (!verifiedPath) {
+      throw new Error(
+        `Rendered video missing on disk at ${renderResult.videoPath}. Check STORAGE_LOCAL_PATH.`,
+      );
+    }
 
     await prisma.project.update({
       where: { id: projectId },
