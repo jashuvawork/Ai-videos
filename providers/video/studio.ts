@@ -4,6 +4,7 @@ import {
   fetchPollinationsImage,
   hashSeed,
   imageBufferToVideo,
+  multiImageBufferToVideo,
 } from "@/providers/studio/ffmpeg-visual";
 import { loadImageBuffer } from "@/providers/studio/image-utils";
 import { resolveCameraMovement } from "@/providers/studio/motion-engine";
@@ -55,6 +56,28 @@ export class StudioVideoProvider implements VideoProvider {
             options.height,
             seed + 1,
           );
+          const imageC = await fetchPollinationsImage(
+            `${motionPrompt}, alternate angle workers and machines moving`,
+            options.width,
+            options.height,
+            seed + 2,
+          );
+          return {
+            videoBuffer: await multiImageBufferToVideo(
+              [imageA, imageB, imageC],
+              options.width,
+              options.height,
+              duration,
+              30,
+              movement,
+            ),
+            provider: this.name,
+            width: options.width,
+            height: options.height,
+            duration,
+            cost: 0,
+            isMock: false,
+          };
         } catch {
           imageB = null;
         }

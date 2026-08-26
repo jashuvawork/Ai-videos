@@ -159,6 +159,108 @@ export async function dualImageBufferToVideo(
   }
 }
 
+/** Chain 2–4 motion clips with crossfades for Gen-4 style continuous action. */
+export async function multiImageBufferToVideo(
+  images: Buffer[],
+  width: number,
+  height: number,
+  duration: number,
+  fps = 30,
+  cameraMovement = "tracking lateral",
+): Promise<Buffer> {
+  if (images.length === 0) {
+    throw new Error("multiImageBufferToVideo requires at least one image");
+  }
+  if (images.length === 1) {
+    return imageBufferToVideo(images[0], width, height, duration, fps, cameraMovement);
+  }
+  if (images.length === 2) {
+    return dualImageBufferToVideo(images[0], images[1], width, height, duration, fps, cameraMovement);
+  }
+
+  const safeDuration = Math.max(3, Math.min(duration, 12));
+  const n = images.length;
+  const fade = Math.min(0.3, safeDuration * 0.08);
+  const segment = safeDuration / n;
+
+  const clipPaths: string[] = [];
+  const outputPath = `/tmp/studio-multi-out-${Date.now()}.mp4`;
+
+  try {
+    for (let i = 0; i < n; i++) {
+      const clipDuration = segment + fade / 2;
+      const movement =
+        i % 2 === 1 && cameraMovement.includes("tracking")
+          ? "tracking lateral"
+          : cameraMovement;
+      const clipBuffer = await imageBufferToVideo(
+        images[i],
+        width,
+        height,
+        clipDuration,
+        fps,
+        movement,
+      );
+      const clipPath = `/tmp/studio-multi-${i}-${Date.now()}.mp4`;
+      await writeFile(clipPath, clipBuffer);
+      clipPaths.push(clipPath);
+    }
+
+    if (clipPaths.length === 2) {
+      const offset = Math.max(0.1, segment - fade / 2);
+      await execFileAsync("ffmpeg", [
+        "-y",
+        "-i", clipPaths[0],
+        "-i", clipPaths[1],
+        "-filter_complex",
+        `[0:v][1:v]xfade=transition=fade:duration=${fade}:offset=${offset}[v]`,
+        "-map", "[v]",
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-t", String(safeDuration),
+        "-r", String(fps),
+        outputPath,
+      ]);
+      return await readFile(outputPath);
+    }
+
+    // 3+ clips: chain xfade filters
+    const filterParts: string[] = [];
+    let lastLabel = "0:v";
+    let offset = Math.max(0.1, segment - fade / 2);
+
+    for (let i = 1; i < clipPaths.length; i++) {
+      const outLabel = i === clipPaths.length - 1 ? "v" : `v${i}`;
+      filterParts.push(
+        `[${lastLabel}][${i}:v]xfade=transition=fade:duration=${fade}:offset=${offset}[${outLabel}]`,
+      );
+      lastLabel = outLabel;
+      offset += segment - fade / 2;
+    }
+
+    const inputArgs = clipPaths.flatMap((p) => ["-i", p]);
+    await execFileAsync("ffmpeg", [
+      "-y",
+      ...inputArgs,
+      "-filter_complex",
+      filterParts.join(";"),
+      "-map", "[v]",
+      "-c:v", "libx264",
+      "-pix_fmt", "yuv420p",
+      "-t", String(safeDuration),
+      "-r", String(fps),
+      outputPath,
+    ]);
+
+    return await readFile(outputPath);
+  } finally {
+    for (const p of clipPaths) {
+      await unlink(p).catch(() => {});
+    }
+    await unlink(outputPath).catch(() => {});
+  }
+}
+
 export function detectImageFormatFromBuffer(buffer: Buffer) {
   return detectImageFormat(buffer);
 }

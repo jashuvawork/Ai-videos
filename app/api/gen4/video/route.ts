@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
-import { isRunwayConfigured } from "@/providers/runway/client";
 import { Gen4VideoService } from "@/services/gen4-video";
+import { initializeWorker } from "@/workers/worker";
 
 const MAX_IMAGE_BYTES = 16 * 1024 * 1024;
 
@@ -15,16 +15,7 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    if (!isRunwayConfigured()) {
-      return NextResponse.json(
-        {
-          error: "Runway API key not configured. Set RUNWAY_API_KEY on the server.",
-          code: "RUNWAY_NOT_CONFIGURED",
-        },
-        { status: 503 },
-      );
-    }
-
+    initializeWorker();
     await getSessionUser();
 
     const formData = await request.formData();
@@ -52,7 +43,7 @@ export async function POST(request: Request) {
     }
 
     const service = new Gen4VideoService();
-    const { taskId } = await service.createTask({
+    const result = await service.createTask({
       prompt: parsed.data.prompt,
       duration: parsed.data.duration,
       width: parsed.data.width,
@@ -62,8 +53,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      taskId,
-      model: imageBuffer ? "gen4_turbo" : "gen4.5",
+      taskId: result.taskId,
+      provider: result.provider,
+      model: result.model,
       status: "PENDING",
     });
   } catch (error) {

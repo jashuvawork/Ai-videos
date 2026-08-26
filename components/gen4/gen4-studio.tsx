@@ -21,11 +21,7 @@ const RATIO_PRESETS: RatioPreset[] = [
   { label: "1:1 Square", width: 960, height: 960 },
 ];
 
-interface Gen4StudioProps {
-  runwayConfigured: boolean;
-}
-
-export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
+export function Gen4Studio() {
   const [prompt, setPrompt] = useState(
     "Wide shot of a biscuit factory line — dough moving on conveyor, steam rising, workers in motion, documentary realism.",
   );
@@ -34,6 +30,7 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [provider, setProvider] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -78,6 +75,7 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
 
           setStatus(data.status);
           setProgress(data.progress ?? 0);
+          if (data.provider) setProvider(data.provider);
 
           if (data.status === "SUCCEEDED") {
             setVideoUrl(data.videoUrl ?? data.outputUrl ?? null);
@@ -96,20 +94,16 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
           setIsSubmitting(false);
           stopPolling();
         }
-      }, 4000);
+      }, 2500);
     },
     [stopPolling],
   );
 
   const handleGenerate = async () => {
-    if (!runwayConfigured) {
-      setError("Runway API key is not configured on the server.");
-      return;
-    }
-
     setError(null);
     setVideoUrl(null);
     setTaskId(null);
+    setProvider(null);
     setStatus(null);
     setProgress(0);
     setIsSubmitting(true);
@@ -129,8 +123,9 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
       }
 
       setTaskId(data.taskId);
+      setProvider(data.provider ?? "studio");
       setStatus(data.status ?? "PENDING");
-      setProgress(10);
+      setProgress(5);
       pollTask(data.taskId);
     } catch (submitError) {
       const message = submitError instanceof Error ? submitError.message : "Generation failed";
@@ -149,6 +144,10 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
+          <p className="text-xs text-zinc-500">
+            Built-in engine — Pollinations AI stills + multi-frame motion synthesis. No Runway API required.
+          </p>
+
           <div className="space-y-2">
             <Label htmlFor="gen4-prompt">Motion prompt</Label>
             <Textarea
@@ -189,13 +188,13 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>Reference image (optional — enables Gen-4 Turbo)</Label>
+            <Label>Reference image (optional — image-driven motion)</Label>
             <div className="flex flex-col gap-3">
               <label
                 className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm text-zinc-400 hover:border-violet-600/50 hover:text-zinc-200 transition-colors"
               >
                 <Upload className="h-4 w-4 shrink-0" />
-                <span>{imageFile ? imageFile.name : "Upload a still to drive image-to-video motion"}</span>
+                <span>{imageFile ? imageFile.name : "Upload a still to anchor the motion clip"}</span>
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               </label>
               {imagePreview && (
@@ -210,13 +209,13 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
 
           <Button
             onClick={handleGenerate}
-            disabled={isSubmitting || !prompt.trim() || !runwayConfigured}
+            disabled={isSubmitting || !prompt.trim()}
             className="w-full bg-violet-600 hover:bg-violet-500"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating real-time motion...
+                Generating motion video...
               </>
             ) : (
               <>
@@ -225,12 +224,6 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
               </>
             )}
           </Button>
-
-          {!runwayConfigured && (
-            <p className="text-sm text-amber-400/90">
-              Set <code className="text-zinc-400">RUNWAY_API_KEY</code> on the server to enable Gen-4 real-time video.
-            </p>
-          )}
 
           {error && <p className="text-sm text-red-400">{error}</p>}
         </CardContent>
@@ -252,7 +245,9 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
               </div>
               <Progress value={progress} />
               {taskId && (
-                <p className="text-xs text-zinc-500 font-mono truncate">Task: {taskId}</p>
+                <p className="text-xs text-zinc-500 font-mono truncate">
+                  {provider ? `${provider} · ` : ""}Task: {taskId}
+                </p>
               )}
             </div>
           )}
@@ -272,7 +267,7 @@ export function Gen4Studio({ runwayConfigured }: Gen4StudioProps) {
                 <Video className="h-10 w-10 mx-auto mb-3 opacity-40" />
                 <p className="text-sm">
                   {isSubmitting
-                    ? "Runway Gen-4 is generating true motion video..."
+                    ? "Building multi-frame motion clip with built-in Gen-4 engine..."
                     : "Your generated clip will appear here"}
                 </p>
               </div>

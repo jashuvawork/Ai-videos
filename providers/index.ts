@@ -76,12 +76,7 @@ function createImageProvider(): ImageProvider {
 
 function createVideoProvider(): VideoProvider {
   const provider = env.AI_VIDEO_PROVIDER;
-  const runwayReady = isRunwayConfigured();
-
-  if (runwayReady && (provider === "runway" || provider === "studio" || provider === "builtin" || provider === "local")) {
-    return new RunwayVideoProvider();
-  }
-  if (provider === "runway" && runwayReady) {
+  if (provider === "runway" && isRunwayConfigured()) {
     return new RunwayVideoProvider();
   }
   if (provider === "studio" || provider === "builtin" || provider === "local" || provider === "ffmpeg") {

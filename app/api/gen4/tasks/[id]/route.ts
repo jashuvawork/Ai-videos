@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { isRunwayConfigured } from "@/providers/runway/client";
 import { Gen4VideoService } from "@/services/gen4-video";
 
 export async function GET(
@@ -8,13 +7,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!isRunwayConfigured()) {
-      return NextResponse.json(
-        { error: "Runway API key not configured", code: "RUNWAY_NOT_CONFIGURED" },
-        { status: 503 },
-      );
-    }
-
     await getSessionUser();
     const { id } = await params;
 
@@ -24,6 +16,7 @@ export async function GET(
     return NextResponse.json(status);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch Gen-4 task";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = message.includes("not found") ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

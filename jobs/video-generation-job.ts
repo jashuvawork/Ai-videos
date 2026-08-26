@@ -195,10 +195,10 @@ export class VideoGenerationProcessor {
     await this.updateStep(jobId, "GENERATE_VISUALS");
 
     const imageFirstVideo =
-      isRunwayConfigured() ||
       env.AI_VIDEO_PROVIDER === "studio" ||
       env.AI_VIDEO_PROVIDER === "builtin" ||
-      env.AI_VIDEO_PROVIDER === "local";
+      env.AI_VIDEO_PROVIDER === "local" ||
+      (env.AI_VIDEO_PROVIDER === "runway" && isRunwayConfigured());
 
     await mapWithConcurrency(sceneRecords, 3, async (scene) => {
       const promptSafety = await this.safetyService.checkPrompt(
