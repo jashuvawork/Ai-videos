@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { CreateProjectSchema } from "@/lib/schemas";
 import { CostTrackingService } from "@/services/cost-tracking";
+import { withResolvedAssetUrls } from "@/lib/asset-url";
 
 export async function GET() {
   const user = await getSessionUser();
@@ -11,7 +12,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  return NextResponse.json({ projects });
+  return NextResponse.json({ projects: projects.map(withResolvedAssetUrls) });
 }
 
 export async function POST(request: Request) {

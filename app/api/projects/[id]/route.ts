@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { withResolvedAssetUrls } from "@/lib/asset-url";
 
 export async function GET(
   _request: Request,
@@ -24,7 +25,7 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ project });
+  return NextResponse.json({ project: withResolvedAssetUrls(project) });
 }
 
 export async function DELETE(

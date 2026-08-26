@@ -20,6 +20,8 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   APP_URL: z.string().default("http://localhost:3000"),
+  /** Origin of the host that stores rendered media (e.g. Railway backend when UI is on Vercel). */
+  ASSETS_BASE_URL: z.string().optional(),
   DEV_USER_ID: z.string().default("dev-user-001"),
   RENDER_FPS: z.coerce.number().default(30),
   RENDER_QUALITY: z.enum(["low", "medium", "high"]).default("high"),
