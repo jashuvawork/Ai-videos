@@ -243,7 +243,8 @@ export function CreateVideoForm() {
               ...form,
               visualStyle: "PHOTOREALISTIC",
               generationMode: "FAST",
-              visualGenerationMode: "IMAGES",
+              visualGenerationMode:
+                form.videoType === "MANUFACTURING" ? "AI_VIDEO" : "IMAGES",
             })
           }
         >

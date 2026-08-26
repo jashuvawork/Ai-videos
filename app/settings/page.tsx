@@ -40,9 +40,14 @@ export default function SettingsPage() {
           )}
           {active.zeroApiKeys && (
             <p className="text-xs text-emerald-400/80 mt-2">
-              Zero-API-key Studio mode — Pollinations images, Edge TTS, FFmpeg motion.
+              Zero-API-key Studio mode — Pollinations images, Edge TTS, built-in Gen-4 motion engine.
             </p>
           )}
+          <p className="text-xs text-violet-400/90 mt-2">
+            Gen-4 Studio uses the built-in motion engine by default (no video API keys).
+            Optional: set <code className="text-zinc-400">AI_VIDEO_PROVIDER=runway</code> and
+            <code className="text-zinc-400">RUNWAY_API_KEY</code> for cloud Runway instead.
+          </p>
         </CardContent>
       </Card>
 

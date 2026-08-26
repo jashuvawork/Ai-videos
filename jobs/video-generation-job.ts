@@ -19,6 +19,8 @@ import { VideoQAService } from "@/services/video-qa";
 import { ReferenceStyleProfileSchema } from "@/lib/schemas/reference-style";
 import { JOB_STEP_ORDER, stepProgress } from "./queue";
 import type { JobStep } from "@/lib/generated/prisma/client";
+import { shouldGenerateSceneVideos } from "@/lib/video-generation-mode";
+import { isRunwayConfigured } from "@/providers/runway/client";
 
 export class VideoGenerationProcessor {
   private storyService = new StoryGenerationService();
@@ -182,19 +184,21 @@ export class VideoGenerationProcessor {
     }
 
     const { width, height } = getResolution(project.aspectRatio);
-    const useVideo =
-      project.generationMode !== "FAST" &&
-      (project.visualGenerationMode === "AI_VIDEO" ||
-        (project.visualGenerationMode === "AUTOMATIC" && project.generationMode === "CINEMATIC"));
+    const useVideo = shouldGenerateSceneVideos({
+      idea: project.idea,
+      videoType: project.videoType,
+      generationMode: project.generationMode,
+      visualGenerationMode: project.visualGenerationMode,
+    });
 
     // GENERATE_VISUALS
     await this.updateStep(jobId, "GENERATE_VISUALS");
 
     const imageFirstVideo =
-      (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) ||
       env.AI_VIDEO_PROVIDER === "studio" ||
       env.AI_VIDEO_PROVIDER === "builtin" ||
-      env.AI_VIDEO_PROVIDER === "local";
+      env.AI_VIDEO_PROVIDER === "local" ||
+      (env.AI_VIDEO_PROVIDER === "runway" && isRunwayConfigured());
 
     await mapWithConcurrency(sceneRecords, 3, async (scene) => {
       const promptSafety = await this.safetyService.checkPrompt(
