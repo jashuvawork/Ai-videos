@@ -1,9 +1,10 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.worker"
+dockerfilePath = "Dockerfile.railway"
 
 [deploy]
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
-healthcheckPath = ""
-startCommand = "npm run worker:poll"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 180
+numReplicas = 1

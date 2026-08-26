@@ -25,7 +25,10 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  const fullPath = join(process.cwd(), env.STORAGE_LOCAL_PATH, filePath);
+  const basePath = env.STORAGE_LOCAL_PATH.startsWith("/")
+    ? env.STORAGE_LOCAL_PATH
+    : join(process.cwd(), env.STORAGE_LOCAL_PATH);
+  const fullPath = join(basePath, filePath);
 
   try {
     const buffer = await readFile(fullPath);

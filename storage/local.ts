@@ -8,7 +8,9 @@ export class LocalStorageProvider implements StorageProvider {
   private basePath: string;
 
   constructor() {
-    this.basePath = join(process.cwd(), env.STORAGE_LOCAL_PATH);
+    this.basePath = env.STORAGE_LOCAL_PATH.startsWith("/")
+      ? env.STORAGE_LOCAL_PATH
+      : join(process.cwd(), env.STORAGE_LOCAL_PATH);
   }
 
   async upload(buffer: Buffer, path: string, _mimeType: string): Promise<StorageUploadResult> {
