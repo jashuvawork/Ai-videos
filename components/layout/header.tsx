@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Film, LayoutDashboard, Settings, Zap } from "lucide-react";
+import { Film, LayoutDashboard, Settings, Clapperboard, Zap } from "lucide-react";
 
 export function Header() {
   return (
@@ -22,6 +22,13 @@ export function Header() {
           >
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">Dashboard</span>
+          </Link>
+          <Link
+            href="/studio"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50 transition-colors"
+          >
+            <Clapperboard className="h-4 w-4" />
+            <span className="hidden sm:inline">Story Studio</span>
           </Link>
           <Link
             href="/gen4"

@@ -21,6 +21,13 @@ export class ElevenLabsVoiceProvider implements VoiceProvider {
 
     const voiceId = VOICE_IDS[options.voice] || VOICE_IDS.male;
 
+    const stability = options.emotion?.match(/fear|tension|panic/i)
+      ? 0.35
+      : options.emotion?.match(/calm|resolution|contemplative/i)
+        ? 0.65
+        : 0.45;
+    const style = options.emotion?.match(/dramatic|shock|reveal/i) ? 0.5 : 0.35;
+
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: "POST",
       headers: {
@@ -32,9 +39,9 @@ export class ElevenLabsVoiceProvider implements VoiceProvider {
         text: options.text,
         model_id: "eleven_multilingual_v2",
         voice_settings: {
-          stability: 0.45,
+          stability,
           similarity_boost: 0.8,
-          style: 0.35,
+          style,
           use_speaker_boost: true,
         },
       }),

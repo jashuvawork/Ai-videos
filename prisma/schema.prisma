@@ -15,6 +15,39 @@ enum ProjectStatus {
   FAILED
 }
 
+enum ProjectKind {
+  LEGACY
+  STORY_STUDIO
+}
+
+enum StoryStudioStatus {
+  DRAFT
+  STORY_GENERATING
+  STORY_READY
+  STORYBOARD_READY
+  ASSETS_MATCHING
+  AI_SHOTS_GENERATING
+  VOICE_GENERATING
+  AUDIO_READY
+  TIMELINE_READY
+  RENDERING
+  QC_RUNNING
+  REVISION_REQUIRED
+  READY_FOR_REVIEW
+  APPROVED
+  UPLOADING
+  PUBLISHED
+  FAILED
+}
+
+enum AssetRights {
+  OWNED
+  LICENSED
+  PUBLIC_DOMAIN
+  OTHER_PERMISSION
+  UNAUTHORIZED
+}
+
 enum VideoType {
   STORY
   CINEMATIC
@@ -136,8 +169,9 @@ model User {
   name      String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  projects  Project[]
-  characters Character[]
+  projects      Project[]
+  characters    Character[]
+  gameplayClips GameplayClip[]
 }
 
 model Project {
@@ -147,6 +181,17 @@ model Project {
   title                String?
   idea                 String
   status               ProjectStatus        @default(DRAFT)
+  projectKind          ProjectKind          @default(LEGACY)
+  studioStatus         StoryStudioStatus?
+  storyPlan            Json?
+  genre                String?
+  narrationStyle       String?
+  pacing               String?
+  targetAudience       String?
+  gameplaySource       String?
+  assetRights          AssetRights?
+  qualityScore         Float?
+  studioSettings       Json?
   videoType            VideoType            @default(STORY)
   platform             Platform             @default(INSTAGRAM_REEL)
   aspectRatio          AspectRatio          @default(RATIO_9_16)
@@ -357,4 +402,26 @@ model AppSettings {
   settings  Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model GameplayClip {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  originalFilename String
+  storageKey       String
+  mimeType         String?
+  duration         Float?
+  width            Int?
+  height           Int?
+  fps              Float?
+  status           String   @default("pending")
+  metadata         Json?
+  tags             String[]
+  embedding        Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }

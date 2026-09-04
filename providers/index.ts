@@ -90,7 +90,12 @@ function createVideoProvider(): VideoProvider {
 
 function createVoiceProvider(): VoiceProvider {
   const provider = env.AI_VOICE_PROVIDER;
-  if (provider === "elevenlabs" && (env.VOICE_API_KEY || env.ELEVENLABS_API_KEY)) {
+  const elevenReady = Boolean(env.VOICE_API_KEY || env.ELEVENLABS_API_KEY);
+
+  if (elevenReady && (provider === "elevenlabs" || provider === "edge" || provider === "studio" || provider === "local" || provider === "builtin")) {
+    return new ElevenLabsVoiceProvider();
+  }
+  if (provider === "elevenlabs" && elevenReady) {
     return new ElevenLabsVoiceProvider();
   }
   if (provider === "edge" || provider === "studio" || provider === "builtin" || provider === "local") {
@@ -99,7 +104,11 @@ function createVoiceProvider(): VoiceProvider {
   if (provider === "mock") {
     return new MockVoiceProvider();
   }
-  return new EdgeVoiceProvider();
+  return elevenReady ? new ElevenLabsVoiceProvider() : new EdgeVoiceProvider();
+}
+
+export function isElevenLabsConfigured(): boolean {
+  return Boolean(env.VOICE_API_KEY || env.ELEVENLABS_API_KEY);
 }
 
 function createMusicProvider(): MusicProvider {
@@ -139,6 +148,7 @@ export async function getProviderStatus() {
     ...active,
     cursorApiKeyValid: cursorValid,
     runwayApiKeyConfigured: isRunwayConfigured(),
+    elevenLabsConfigured: isElevenLabsConfigured(),
     gen4Available: isRunwayConfigured(),
   };
 }
