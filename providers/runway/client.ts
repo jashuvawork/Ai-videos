@@ -1,4 +1,5 @@
 import { ProviderError } from "@/providers/shared/errors";
+import { env } from "@/config/env";
 
 const RUNWAY_API = "https://api.dev.runwayml.com";
 const RUNWAY_VERSION = "2024-11-06";
@@ -9,6 +10,10 @@ export interface RunwayTask {
   output?: string[];
   failure?: string;
   failureCode?: string;
+}
+
+export function isRunwayConfigured(): boolean {
+  return Boolean(env.VIDEO_API_KEY || env.RUNWAY_API_KEY);
 }
 
 export function mapRunwayRatio(width: number, height: number): string {

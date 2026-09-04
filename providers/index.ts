@@ -20,6 +20,7 @@ import { MockVoiceProvider } from "@/providers/voice/mock";
 import { StudioMusicProvider } from "@/providers/music/studio";
 import { MockMusicProvider } from "@/providers/music/mock";
 import { getCursorApiKey, verifyCursorApiKey } from "@/providers/cursor/client";
+import { isRunwayConfigured } from "@/providers/runway/client";
 
 export interface ProviderBundle {
   llm: LLMProvider;
@@ -89,7 +90,12 @@ function createVideoProvider(): VideoProvider {
 
 function createVoiceProvider(): VoiceProvider {
   const provider = env.AI_VOICE_PROVIDER;
-  if (provider === "elevenlabs" && (env.VOICE_API_KEY || env.ELEVENLABS_API_KEY)) {
+  const elevenReady = Boolean(env.VOICE_API_KEY || env.ELEVENLABS_API_KEY);
+
+  if (elevenReady && (provider === "elevenlabs" || provider === "edge" || provider === "studio" || provider === "local" || provider === "builtin")) {
+    return new ElevenLabsVoiceProvider();
+  }
+  if (provider === "elevenlabs" && elevenReady) {
     return new ElevenLabsVoiceProvider();
   }
   if (provider === "edge" || provider === "studio" || provider === "builtin" || provider === "local") {
@@ -98,7 +104,11 @@ function createVoiceProvider(): VoiceProvider {
   if (provider === "mock") {
     return new MockVoiceProvider();
   }
-  return new EdgeVoiceProvider();
+  return elevenReady ? new ElevenLabsVoiceProvider() : new EdgeVoiceProvider();
+}
+
+export function isElevenLabsConfigured(): boolean {
+  return Boolean(env.VOICE_API_KEY || env.ELEVENLABS_API_KEY);
 }
 
 function createMusicProvider(): MusicProvider {
@@ -134,5 +144,11 @@ export function getActiveProviderNames() {
 export async function getProviderStatus() {
   const active = getActiveProviderNames();
   const cursorValid = active.cursorApiKeyConfigured ? await verifyCursorApiKey() : false;
-  return { ...active, cursorApiKeyValid: cursorValid };
+  return {
+    ...active,
+    cursorApiKeyValid: cursorValid,
+    runwayApiKeyConfigured: isRunwayConfigured(),
+    elevenLabsConfigured: isElevenLabsConfigured(),
+    gen4Available: isRunwayConfigured(),
+  };
 }
