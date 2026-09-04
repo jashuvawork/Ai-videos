@@ -21,6 +21,7 @@ import { JOB_STEP_ORDER, stepProgress } from "./queue";
 import type { JobStep } from "@/lib/generated/prisma/client";
 import { shouldGenerateSceneVideos } from "@/lib/video-generation-mode";
 import { isRunwayConfigured } from "@/providers/runway/client";
+import { StudioPipelineProcessor } from "@/services/studio-pipeline";
 
 export class VideoGenerationProcessor {
   private storyService = new StoryGenerationService();
@@ -37,6 +38,7 @@ export class VideoGenerationProcessor {
   private safetyService = new ContentSafetyService();
   private costTracker = new CostTrackingService();
   private videoQA = new VideoQAService();
+  private studioPipeline = new StudioPipelineProcessor();
 
   async process(jobId: string, projectId: string, sceneId?: string) {
     const job = await prisma.generationJob.update({
@@ -88,6 +90,11 @@ export class VideoGenerationProcessor {
   private async runFullPipeline(projectId: string, jobId: string) {
     const project = await prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new Error("Project not found");
+
+    if (project.projectKind === "STORY_STUDIO") {
+      await this.studioPipeline.run(projectId, jobId);
+      return;
+    }
 
     await prisma.project.update({
       where: { id: projectId },

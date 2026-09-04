@@ -1,41 +1,60 @@
 # AI Story Studio
 
-Cinematic YouTube story production platform — gameplay footage + AI cinematic inserts + ElevenLabs voice + FFmpeg assembly.
+Cinematic YouTube story production — gameplay footage + AI cinematic inserts + ElevenLabs voice + FFmpeg assembly.
 
-## Phase 1 (implemented)
+## Full pipeline (implemented)
 
-- Story Studio dashboard at `/studio`
-- Create Story page with Story Director
-- Structured `StoryPlan` JSON (Zod validated)
-- Built-in Story Director (no OpenAI required)
-- ElevenLabs auto-selected when `ELEVENLABS_API_KEY` is set
-- Prisma models: `StoryStudioStatus`, `GameplayClip`, project story fields
-- API routes under `/api/studio/*`
+| Step | Route / Service |
+|------|-----------------|
+| Create story | `/studio/create` → `StoryDirectorService` |
+| Storyboard | `/studio/projects/[id]` |
+| Gameplay upload | `/studio/gameplay` → `POST /api/studio/gameplay` |
+| Gameplay matching | `POST /api/studio/projects/[id]/match-gameplay` |
+| Full render | `POST /api/studio/projects/[id]/generate` → `StudioPipelineProcessor` |
+| Preview | Video player on project page |
+| QC + Shorts | `StudioQCService`, `shorts-engine` |
+| YouTube metadata | Auto-generated on render completion |
+| Debug jobs | `/studio/admin` |
 
-## Configure ElevenLabs
+## MVP flow
 
-On Railway or local `.env` (never commit keys):
+1. **Create Story** at `/studio/create` (taxi driver example works without API keys)
+2. **Generate Story** → storyboard with ~12 scenes
+3. **Upload gameplay** at `/studio/gameplay` (optional — improves matching)
+4. **Match Gameplay** → tags clips to scenes
+5. **Render Full Video** → voice (ElevenLabs/Edge) + AI visuals + FFmpeg
+6. **Preview** final MP4 with QC score
+
+## Configure providers
 
 ```bash
-ELEVENLABS_API_KEY=your_key_here
-AI_VOICE_PROVIDER=elevenlabs  # optional — auto-upgrades when key is set
+ELEVENLABS_API_KEY=your_key_here   # server only — never commit
+RUNWAY_API_KEY=                    # optional AI video
+GOOGLE_API_KEY=                    # optional Veo routing
+KLING_API_KEY=                     # optional Kling routing
+OPENAI_API_KEY=                    # optional LLM story director
 ```
-
-## Remaining phases
-
-| Phase | Feature |
-|-------|---------|
-| 2 | Storyboard UI polish, character persistence |
-| 3 | Scene editor with regenerate |
-| 4 | Gameplay upload + analysis + matching |
-| 5 | Video provider router (Runway/Veo/Kling) |
-| 6 | Voice generation per scene |
-| 7 | Timeline engine |
-| 8 | FFmpeg worker render |
-| 9–15 | Music, SFX, QC, thumbnails, Shorts, YouTube |
 
 ## Architecture
 
-- **Software**: this Next.js app + worker
-- **Generation**: provider adapters (`providers/*`)
-- **Assembly**: FFmpeg (`services/video-render.ts`)
+- **Story plan** → `hydrateStoryPlan()` → Prisma `Scene` + `Character` rows
+- **Gameplay** → ffprobe + tag inference → `GameplayClip` → matcher scores
+- **Pipeline** → `StudioPipelineProcessor` (reuses legacy voice/timeline/render services)
+- **Worker** → `VideoGenerationProcessor` branches on `projectKind: STORY_STUDIO`
+
+## API routes
+
+- `GET/POST /api/studio/projects`
+- `POST /api/studio/projects/[id]/generate-story`
+- `POST /api/studio/projects/[id]/generate` — full render
+- `POST /api/studio/projects/[id]/match-gameplay`
+- `GET /api/studio/projects/[id]/costs`
+- `GET/POST /api/studio/gameplay`
+- `GET /api/studio/admin/jobs`
+
+## Deferred
+
+- YouTube OAuth publish (metadata generated; upload requires OAuth)
+- BullMQ/Redis (Postgres poll worker used in production)
+- Vector embeddings for gameplay (tag-based matching for MVP)
+- Per-scene manual editor (legacy scene editor can be wired later)

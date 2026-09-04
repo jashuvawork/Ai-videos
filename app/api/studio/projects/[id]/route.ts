@@ -12,6 +12,13 @@ export async function GET(
 
   const project = await prisma.project.findFirst({
     where: { id, userId: user.id, projectKind: "STORY_STUDIO" },
+    include: {
+      scenes: { orderBy: { sceneNumber: "asc" } },
+      jobs: { orderBy: { createdAt: "desc" }, take: 5 },
+      renders: { orderBy: { createdAt: "desc" }, take: 3 },
+      socialMetadata: true,
+      costEntries: true,
+    },
   });
 
   if (!project) {
