@@ -4,6 +4,7 @@ import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { join, dirname } from "path";
 import { env } from "@/config/env";
 import { BITRATE_PRESETS } from "@/config/video";
+import { buildMotionFilterChain } from "@/providers/studio/motion-engine";
 import { storage } from "@/storage";
 import { prisma } from "@/lib/db";
 import { videoLog } from "@/lib/logger";
@@ -36,13 +37,13 @@ export interface RenderInput {
 }
 
 const CAMERA_MOVEMENTS: Record<string, string> = {
-  "slow zoom in": "zoompan=z='min(zoom+0.001,1.3)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow zoom out": "zoompan=z='if(lte(zoom,1.0),1.3,max(1.001,zoom-0.001))':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow pan left": "zoompan=z='1.1':d=125:x='if(gte(on,1),x-1,x)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow pan right": "zoompan=z='1.1':d=125:x='if(gte(on,1),x+1,x)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "push in": "zoompan=z='min(zoom+0.002,1.4)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "pull out": "zoompan=z='if(lte(zoom,1.0),1.4,max(1.001,zoom-0.002))':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "vertical pan": "zoompan=z='1.1':d=125:x='iw/2-(iw/zoom/2)':y='if(gte(on,1),y-1,y)':s={w}x{h}",
+  "slow zoom in": "slow zoom in",
+  "slow zoom out": "slow zoom out",
+  "slow pan left": "slow pan left",
+  "slow pan right": "slow pan right",
+  "push in": "push in",
+  "pull out": "pull out",
+  "vertical pan": "vertical pan",
 };
 
 export class VideoRenderService {
@@ -153,16 +154,14 @@ export class VideoRenderService {
     fps: number,
     cameraMovement?: string,
   ) {
-    const movement = cameraMovement || "slow zoom in";
-    const zoomFilter = (CAMERA_MOVEMENTS[movement] || CAMERA_MOVEMENTS["slow zoom in"])
-      .replace(/\{w\}/g, String(width))
-      .replace(/\{h\}/g, String(height));
-
+    const movementKey = cameraMovement || "slow zoom in";
+    const normalizedMovement = CAMERA_MOVEMENTS[movementKey] || movementKey;
     const totalFrames = Math.ceil(duration * fps);
+    const vf = buildMotionFilterChain(width, height, totalFrames, normalizedMovement);
 
     await execFileAsync("ffmpeg", [
       "-y", "-loop", "1", "-i", imagePath,
-      "-vf", `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},${zoomFilter.replace("d=125", `d=${totalFrames}`)}`,
+      "-vf", vf,
       "-c:v", "libx264", "-pix_fmt", "yuv420p",
       "-t", String(duration), "-r", String(fps),
       outputPath,

@@ -200,7 +200,7 @@ npx tsx tests/e2e-pipeline.test.ts
 
 **Recommended:** Deploy the full app on **Railway** (API + UI + FFmpeg worker in one container). See [DEPLOY.md](./DEPLOY.md).
 
-**Live:** https://ai-video-backend-production-96e9.up.railway.app
+**Live:** https://ai-video-backend-production-4d10.up.railway.app (Railway project: `ai-video-studio`)
 
 Vercel is **not recommended** for this app — serverless functions lack persistent disk and FFmpeg.
 

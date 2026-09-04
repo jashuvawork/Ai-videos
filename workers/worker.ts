@@ -1,5 +1,6 @@
 import { getJobQueue } from "@/jobs/queue";
 import { VideoGenerationProcessor } from "@/jobs/video-generation-job";
+import { Gen4VideoProcessor } from "@/jobs/gen4-video-job";
 
 let initialized = false;
 
@@ -15,8 +16,13 @@ export function initializeWorker() {
 
   const queue = getJobQueue();
   const processor = new VideoGenerationProcessor();
+  const gen4Processor = new Gen4VideoProcessor();
 
   queue.process(async (job) => {
+    if (job.type === "GEN4_VIDEO" && job.data) {
+      await gen4Processor.process(job.data as unknown as import("@/jobs/gen4-video-job").Gen4JobPayload);
+      return;
+    }
     await processor.process(job.id, job.projectId, job.sceneId);
   });
 }

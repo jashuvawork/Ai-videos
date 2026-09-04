@@ -7,6 +7,7 @@ export interface VideoGenerateOptions {
   referenceImageUrl?: string;
   /** Prefer local disk path over HTTP URL for reference stills (avoids self-fetch 404 JSON). */
   referenceImagePath?: string;
+  cameraMovement?: string;
 }
 
 export interface VideoResponse {

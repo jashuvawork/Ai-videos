@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Zap } from "lucide-react";
+import { Sparkles, Zap, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { SUPPORTED_LANGUAGES } from "@/config/video";
 
 const VIDEO_TYPES = [
   { value: "STORY", label: "Story" },
+  { value: "MANUFACTURING", label: "Manufacturing / How It's Made" },
   { value: "CINEMATIC", label: "Cinematic" },
   { value: "EDUCATIONAL", label: "Educational" },
   { value: "MOTIVATION", label: "Motivation" },
@@ -69,11 +70,15 @@ const VOICES = [
   { value: "NONE", label: "No voice" },
 ];
 
+const MANUFACTURING_IDEA_RE =
+  /\b(factory|manufactur|how .+ (is|are) made|assembly|production line|biscuit|cookie|chocolate|food plant)\b/i;
+
 export function CreateVideoForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [magicMode, setMagicMode] = useState(false);
+  const [referenceVideo, setReferenceVideo] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     idea: "",
@@ -87,6 +92,28 @@ export function CreateVideoForm() {
     generationMode: "FAST",
     visualGenerationMode: "IMAGES",
   });
+
+  const handleIdeaChange = (idea: string) => {
+    const updates: Partial<typeof form> = { idea };
+    if (MANUFACTURING_IDEA_RE.test(idea)) {
+      updates.videoType = "MANUFACTURING";
+      updates.visualStyle = "DOCUMENTARY";
+      updates.voice = "NONE";
+      updates.visualGenerationMode = "AI_VIDEO";
+    }
+    setForm((prev) => ({ ...prev, ...updates }));
+  };
+
+  const handleVideoTypeChange = (videoType: string) => {
+    const updates: Partial<typeof form> = { videoType };
+    if (videoType === "MANUFACTURING") {
+      updates.visualStyle = "DOCUMENTARY";
+      updates.voice = "NONE";
+      updates.visualGenerationMode = "AI_VIDEO";
+      updates.aspectRatio = "RATIO_9_16";
+    }
+    setForm((prev) => ({ ...prev, ...updates }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +144,19 @@ export function CreateVideoForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create project");
 
+      if (referenceVideo) {
+        const fd = new FormData();
+        fd.append("video", referenceVideo);
+        const refRes = await fetch(`/api/projects/${data.project.id}/reference-video`, {
+          method: "POST",
+          body: fd,
+        });
+        if (!refRes.ok) {
+          const refData = await refRes.json();
+          throw new Error(refData.error || "Failed to analyze reference video");
+        }
+      }
+
       const genRes = await fetch(`/api/projects/${data.project.id}/generate`, { method: "POST" });
       const genData = await genRes.json();
       if (!genRes.ok) throw new Error(genData.error || "Failed to start generation");
@@ -134,12 +174,36 @@ export function CreateVideoForm() {
       <div className="space-y-3">
         <Label className="text-zinc-300 text-base">Tell me what you want your video to be about…</Label>
         <Textarea
-          placeholder="A young pilot gets lost during a storm and discovers an abandoned island."
+          placeholder="How biscuits are made in a factory — from raw ingredients through mixing, baking, and packaging."
           value={form.idea}
-          onChange={(e) => setForm({ ...form, idea: e.target.value })}
+          onChange={(e) => handleIdeaChange(e.target.value)}
           className="min-h-[140px] text-base"
           required
         />
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-zinc-300">Reference video (optional — style guide only)</Label>
+        <p className="text-sm text-zinc-500">
+          Upload a reference to extract cinematography, pacing, and color — never copied content.
+        </p>
+        <div className="flex items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-500">
+            <Upload className="h-4 w-4" />
+            {referenceVideo ? referenceVideo.name : "Choose reference video"}
+            <input
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              className="hidden"
+              onChange={(e) => setReferenceVideo(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          {referenceVideo && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setReferenceVideo(null)}>
+              Remove
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -179,11 +243,20 @@ export function CreateVideoForm() {
               ...form,
               visualStyle: "PHOTOREALISTIC",
               generationMode: "FAST",
-              visualGenerationMode: "IMAGES",
+              visualGenerationMode:
+                form.videoType === "MANUFACTURING" ? "AI_VIDEO" : "IMAGES",
             })
           }
         >
           Photorealistic
+        </Button>
+        <Button
+          type="button"
+          variant={form.videoType === "MANUFACTURING" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handleVideoTypeChange("MANUFACTURING")}
+        >
+          How It&apos;s Made
         </Button>
       </div>
 
@@ -194,7 +267,7 @@ export function CreateVideoForm() {
             <Select
               options={VIDEO_TYPES}
               value={form.videoType}
-              onChange={(e) => setForm({ ...form, videoType: e.target.value })}
+              onChange={(e) => handleVideoTypeChange(e.target.value)}
             />
           </div>
           <div className="space-y-2">

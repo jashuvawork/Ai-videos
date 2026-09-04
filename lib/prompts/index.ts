@@ -1,3 +1,5 @@
+import { calculateSceneCount } from "@/lib/director/scene-count";
+
 export const storyPrompt = (params: {
   idea: string;
   videoType: string;
@@ -7,26 +9,41 @@ export const storyPrompt = (params: {
   platform: string;
   visualStyle: string;
   generationMode: string;
-}) => `
-You are an expert short-form video storyteller. Create a compelling video script as structured JSON.
+  voice?: string;
+}) => {
+  const targetScenes = calculateSceneCount(params.duration, params.generationMode);
+  const voiceLine = params.voice ? `- Voice: ${params.voice}` : "- Voice: NONE";
+  return `
+You are a hyper-realistic AI video director and professional documentary filmmaker.
+
+The result must look like real camera footage from a documentary crew — NOT an AI slideshow, presentation, or title cards.
+
+RULES:
+- SHOW physical cause-and-effect action; never chapter labels or text on screen
+- Define capture style: professional documentary camera, controlled movement, natural grading
+- One or two subjects with simple deliberate motion per shot
+- Maintain PRODUCT_REFERENCE continuity across scenes
+- caption field MUST be empty string ""
+- Narration is optional voice-over only; empty if Voice is NONE
+- NO visible text in generated visuals
 
 INPUT:
 - Idea: ${params.idea}
 - Video Type: ${params.videoType}
-- Target Duration: ${params.duration} seconds (MUST match exactly in scene durations)
+- Target Duration: ${params.duration} seconds (scene durations MUST sum to exactly ${params.duration})
 - Language: ${params.language}
 - Tone: ${params.tone}
 - Platform: ${params.platform}
 - Visual Style: ${params.visualStyle}
 - Mode: ${params.generationMode}
+${voiceLine}
 
-REQUIREMENTS:
-1. Strong hook in first 1-3 seconds
-2. Emotional progression with clear beginning, escalation, payoff
-3. Scene durations MUST sum to exactly ${params.duration} seconds
-4. For ${params.duration}s video, use ${Math.max(3, Math.min(12, Math.ceil(params.duration / 5)))} scenes
-5. Optimize for retention on ${params.platform}
-6. Narration in ${params.language}
+IF MANUFACTURING / FACTORY: chronological production with strict product continuity. Every scene has active physical motion.
+IF FOOD / PROCESS: source → prep → processing → packaging with continuous action.
+IF NARRATIVE: hook → character action → discovery → escalation → climax → resolution.
+
+SCENE COUNT: ~${targetScenes} scenes. Each scene 3-6 seconds. caption field MUST be empty string "".
+visualDescription must describe what is physically happening on screen.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -54,6 +71,7 @@ Return ONLY valid JSON matching this schema:
   }]
 }
 `;
+};
 
 export const sceneVisualPrompt = (params: {
   scene: {

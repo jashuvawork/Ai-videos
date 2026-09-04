@@ -25,7 +25,7 @@ export class SubtitleService {
     const entries: SubtitleEntry[] = [];
 
     for (const scene of scenes) {
-      const text = scene.caption || scene.narration || "";
+      const text = scene.narration || "";
       if (!text) continue;
 
       const timings = wordTimings?.get(scene.id);

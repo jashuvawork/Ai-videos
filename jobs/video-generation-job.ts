@@ -15,8 +15,12 @@ import { VideoRenderService } from "@/services/video-render";
 import { MetadataService, ThumbnailService } from "@/services/metadata";
 import { ContentSafetyService } from "@/services/content-safety";
 import { CostTrackingService } from "@/services/cost-tracking";
+import { VideoQAService } from "@/services/video-qa";
+import { ReferenceStyleProfileSchema } from "@/lib/schemas/reference-style";
 import { JOB_STEP_ORDER, stepProgress } from "./queue";
 import type { JobStep } from "@/lib/generated/prisma/client";
+import { shouldGenerateSceneVideos } from "@/lib/video-generation-mode";
+import { isRunwayConfigured } from "@/providers/runway/client";
 
 export class VideoGenerationProcessor {
   private storyService = new StoryGenerationService();
@@ -32,6 +36,7 @@ export class VideoGenerationProcessor {
   private thumbnailService = new ThumbnailService();
   private safetyService = new ContentSafetyService();
   private costTracker = new CostTrackingService();
+  private videoQA = new VideoQAService();
 
   async process(jobId: string, projectId: string, sceneId?: string) {
     const job = await prisma.generationJob.update({
@@ -103,6 +108,7 @@ export class VideoGenerationProcessor {
       platform: project.platform,
       visualStyle: project.visualStyle,
       generationMode: project.generationMode,
+      voice: project.voice,
       projectId,
     });
 
@@ -131,21 +137,31 @@ export class VideoGenerationProcessor {
       visualToken: c.visualToken ?? undefined,
       visualIdentity: c.visualIdentity ?? undefined,
     }));
+    const referenceStyle = this.parseReferenceStyle(project.referenceStyleProfile);
+
     const visualPrompts = await this.sceneService.generateVisualPrompts(
       story.scenes,
       mappedCharacters,
       project.visualStyle,
       project.aspectRatio,
       projectId,
+      project.idea,
+      {
+        videoType: project.videoType,
+        aspectRatio: project.aspectRatio,
+        referenceStyle,
+      },
     );
 
     const sceneRecords = [];
     for (const scene of story.scenes) {
       const vp = visualPrompts.find((v) => v.sceneNumber === scene.sceneNumber);
+      const sceneKey = (scene as { sceneKey?: string }).sceneKey;
       const record = await prisma.scene.create({
         data: {
           projectId,
           sceneNumber: scene.sceneNumber,
+          sceneKey,
           duration: scene.duration,
           narration: scene.narration,
           dialogue: scene.dialogue,
@@ -168,19 +184,21 @@ export class VideoGenerationProcessor {
     }
 
     const { width, height } = getResolution(project.aspectRatio);
-    const useVideo =
-      project.generationMode !== "FAST" &&
-      (project.visualGenerationMode === "AI_VIDEO" ||
-        (project.visualGenerationMode === "AUTOMATIC" && project.generationMode === "CINEMATIC"));
+    const useVideo = shouldGenerateSceneVideos({
+      idea: project.idea,
+      videoType: project.videoType,
+      generationMode: project.generationMode,
+      visualGenerationMode: project.visualGenerationMode,
+    });
 
     // GENERATE_VISUALS
     await this.updateStep(jobId, "GENERATE_VISUALS");
 
     const imageFirstVideo =
-      (env.AI_VIDEO_PROVIDER === "runway" && (env.VIDEO_API_KEY || env.RUNWAY_API_KEY)) ||
       env.AI_VIDEO_PROVIDER === "studio" ||
       env.AI_VIDEO_PROVIDER === "builtin" ||
-      env.AI_VIDEO_PROVIDER === "local";
+      env.AI_VIDEO_PROVIDER === "local" ||
+      (env.AI_VIDEO_PROVIDER === "runway" && isRunwayConfigured());
 
     await mapWithConcurrency(sceneRecords, 3, async (scene) => {
       const promptSafety = await this.safetyService.checkPrompt(
@@ -213,6 +231,7 @@ export class VideoGenerationProcessor {
             scene.duration,
             referenceUrl,
             imageAsset.localPath ?? undefined,
+            scene.cameraMovement ?? undefined,
           );
         } else {
           videoAsset = await this.visualService.generateVideo(
@@ -223,6 +242,9 @@ export class VideoGenerationProcessor {
             width,
             height,
             scene.duration,
+            undefined,
+            undefined,
+            scene.cameraMovement ?? undefined,
           );
         }
 
@@ -355,7 +377,7 @@ export class VideoGenerationProcessor {
       scenes: renderScenes,
       musicPath: musicAsset?.localPath ?? undefined,
       subtitles: subtitleEntries,
-      burnSubtitles: true,
+      burnSubtitles: false,
     });
 
     const render = await prisma.render.create({
@@ -388,6 +410,11 @@ export class VideoGenerationProcessor {
       );
     }
 
+    const qa = await this.videoQA.analyze(verifiedPath);
+    if (!qa.valid) {
+      throw new Error(`Video QA failed: ${qa.issues.join("; ")}`);
+    }
+
     // GENERATE_THUMBNAIL
     await this.updateStep(jobId, "GENERATE_THUMBNAIL");
     await this.thumbnailService.generate(projectId, project.version);
@@ -409,6 +436,15 @@ export class VideoGenerationProcessor {
     });
 
     await this.costTracker.estimate(projectId);
+  }
+
+  private parseReferenceStyle(raw: unknown) {
+    if (!raw) return null;
+    try {
+      return ReferenceStyleProfileSchema.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   private async regenerateScene(projectId: string, sceneId: string, jobId: string) {
@@ -503,7 +539,7 @@ export class VideoGenerationProcessor {
         startTime: s.startTime,
         endTime: s.endTime,
       })),
-      burnSubtitles: true,
+      burnSubtitles: false,
     });
 
     const render = await prisma.render.create({

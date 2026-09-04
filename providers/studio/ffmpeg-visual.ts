@@ -1,19 +1,10 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { writeFile, unlink } from "fs/promises";
+import { writeFile, unlink, readFile } from "fs/promises";
 import { assertValidImageBuffer, detectImageFormat } from "./image-utils";
+import { buildMotionFilterChain } from "./motion-engine";
 
 const execFileAsync = promisify(execFile);
-
-const CAMERA_MOVEMENTS: Record<string, string> = {
-  "slow zoom in": "zoompan=z='min(zoom+0.001,1.3)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow zoom out": "zoompan=z='if(lte(zoom,1.0),1.3,max(1.001,zoom-0.001))':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow pan left": "zoompan=z='1.1':d=125:x='if(gte(on,1),x-1,x)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "slow pan right": "zoompan=z='1.1':d=125:x='if(gte(on,1),x+1,x)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "push in": "zoompan=z='min(zoom+0.002,1.4)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "pull out": "zoompan=z='if(lte(zoom,1.0),1.4,max(1.001,zoom-0.002))':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}",
-  "vertical pan": "zoompan=z='1.1':d=125:x='iw/2-(iw/zoom/2)':y='if(gte(on,1),y-1,y)':s={w}x{h}",
-};
 
 export function hashSeed(text: string): number {
   let hash = 0;
@@ -32,15 +23,6 @@ export function hashColorFromPrompt(text: string): string {
   const gg = Math.min(255, g).toString(16).padStart(2, "0");
   const bb = Math.min(255, b).toString(16).padStart(2, "0");
   return `0x${rr}${gg}${bb}`;
-}
-
-function sanitizeDrawtext(text: string): string {
-  return text
-    .replace(/[':\\\n\r]/g, " ")
-    .replace(/[^\w\s,.-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 50);
 }
 
 export async function fetchPollinationsImage(
@@ -97,12 +79,8 @@ export async function imageBufferToVideo(
   assertValidImageBuffer(imageBuffer, "imageBufferToVideo input");
   await writeFile(inputPath, imageBuffer);
 
-  const movement = CAMERA_MOVEMENTS[cameraMovement] || CAMERA_MOVEMENTS["slow zoom in"];
   const totalFrames = Math.ceil(safeDuration * fps);
-  const zoomFilter = movement
-    .replace(/\{w\}/g, String(width))
-    .replace(/\{h\}/g, String(height))
-    .replace("d=125", `d=${totalFrames}`);
+  const vf = buildMotionFilterChain(width, height, totalFrames, cameraMovement);
 
   try {
     await execFileAsync("ffmpeg", [
@@ -110,7 +88,7 @@ export async function imageBufferToVideo(
       "-loop", "1",
       "-i", inputPath,
       "-vf",
-      `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},${zoomFilter}`,
+      vf,
       "-c:v", "libx264",
       "-pix_fmt", "yuv420p",
       "-t", String(safeDuration),
@@ -118,10 +96,167 @@ export async function imageBufferToVideo(
       outputPath,
     ]);
 
-    const { readFile } = await import("fs/promises");
     return await readFile(outputPath);
   } finally {
     await unlink(inputPath).catch(() => {});
+    await unlink(outputPath).catch(() => {});
+  }
+}
+
+/**
+ * Crossfade two motion clips — simulates continued action when true AI video is unavailable.
+ */
+export async function dualImageBufferToVideo(
+  imageA: Buffer,
+  imageB: Buffer,
+  width: number,
+  height: number,
+  duration: number,
+  fps = 30,
+  cameraMovement = "tracking lateral",
+): Promise<Buffer> {
+  const safeDuration = Math.max(3, Math.min(duration, 12));
+  const fade = Math.min(0.35, safeDuration * 0.12);
+  const half = safeDuration / 2;
+  const clipAPath = `/tmp/studio-dual-a-${Date.now()}.mp4`;
+  const clipBPath = `/tmp/studio-dual-b-${Date.now()}.mp4`;
+  const outputPath = `/tmp/studio-dual-out-${Date.now()}.mp4`;
+
+  const clipA = await imageBufferToVideo(imageA, width, height, half + fade / 2, fps, cameraMovement);
+  const clipB = await imageBufferToVideo(
+    imageB,
+    width,
+    height,
+    half + fade / 2,
+    fps,
+    cameraMovement.includes("tracking") ? "tracking lateral" : cameraMovement,
+  );
+
+  await writeFile(clipAPath, clipA);
+  await writeFile(clipBPath, clipB);
+
+  const offset = Math.max(0.1, half - fade / 2);
+
+  try {
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-i", clipAPath,
+      "-i", clipBPath,
+      "-filter_complex",
+      `[0:v][1:v]xfade=transition=fade:duration=${fade}:offset=${offset}[v]`,
+      "-map", "[v]",
+      "-c:v", "libx264",
+      "-pix_fmt", "yuv420p",
+      "-t", String(safeDuration),
+      "-r", String(fps),
+      outputPath,
+    ]);
+    return await readFile(outputPath);
+  } finally {
+    await unlink(clipAPath).catch(() => {});
+    await unlink(clipBPath).catch(() => {});
+    await unlink(outputPath).catch(() => {});
+  }
+}
+
+/** Chain 2–4 motion clips with crossfades for Gen-4 style continuous action. */
+export async function multiImageBufferToVideo(
+  images: Buffer[],
+  width: number,
+  height: number,
+  duration: number,
+  fps = 30,
+  cameraMovement = "tracking lateral",
+): Promise<Buffer> {
+  if (images.length === 0) {
+    throw new Error("multiImageBufferToVideo requires at least one image");
+  }
+  if (images.length === 1) {
+    return imageBufferToVideo(images[0], width, height, duration, fps, cameraMovement);
+  }
+  if (images.length === 2) {
+    return dualImageBufferToVideo(images[0], images[1], width, height, duration, fps, cameraMovement);
+  }
+
+  const safeDuration = Math.max(3, Math.min(duration, 12));
+  const n = images.length;
+  const fade = Math.min(0.3, safeDuration * 0.08);
+  const segment = safeDuration / n;
+
+  const clipPaths: string[] = [];
+  const outputPath = `/tmp/studio-multi-out-${Date.now()}.mp4`;
+
+  try {
+    for (let i = 0; i < n; i++) {
+      const clipDuration = segment + fade / 2;
+      const movement =
+        i % 2 === 1 && cameraMovement.includes("tracking")
+          ? "tracking lateral"
+          : cameraMovement;
+      const clipBuffer = await imageBufferToVideo(
+        images[i],
+        width,
+        height,
+        clipDuration,
+        fps,
+        movement,
+      );
+      const clipPath = `/tmp/studio-multi-${i}-${Date.now()}.mp4`;
+      await writeFile(clipPath, clipBuffer);
+      clipPaths.push(clipPath);
+    }
+
+    if (clipPaths.length === 2) {
+      const offset = Math.max(0.1, segment - fade / 2);
+      await execFileAsync("ffmpeg", [
+        "-y",
+        "-i", clipPaths[0],
+        "-i", clipPaths[1],
+        "-filter_complex",
+        `[0:v][1:v]xfade=transition=fade:duration=${fade}:offset=${offset}[v]`,
+        "-map", "[v]",
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-t", String(safeDuration),
+        "-r", String(fps),
+        outputPath,
+      ]);
+      return await readFile(outputPath);
+    }
+
+    // 3+ clips: chain xfade filters
+    const filterParts: string[] = [];
+    let lastLabel = "0:v";
+    let offset = Math.max(0.1, segment - fade / 2);
+
+    for (let i = 1; i < clipPaths.length; i++) {
+      const outLabel = i === clipPaths.length - 1 ? "v" : `v${i}`;
+      filterParts.push(
+        `[${lastLabel}][${i}:v]xfade=transition=fade:duration=${fade}:offset=${offset}[${outLabel}]`,
+      );
+      lastLabel = outLabel;
+      offset += segment - fade / 2;
+    }
+
+    const inputArgs = clipPaths.flatMap((p) => ["-i", p]);
+    await execFileAsync("ffmpeg", [
+      "-y",
+      ...inputArgs,
+      "-filter_complex",
+      filterParts.join(";"),
+      "-map", "[v]",
+      "-c:v", "libx264",
+      "-pix_fmt", "yuv420p",
+      "-t", String(safeDuration),
+      "-r", String(fps),
+      outputPath,
+    ]);
+
+    return await readFile(outputPath);
+  } finally {
+    for (const p of clipPaths) {
+      await unlink(p).catch(() => {});
+    }
     await unlink(outputPath).catch(() => {});
   }
 }
@@ -130,22 +265,29 @@ export function detectImageFormatFromBuffer(buffer: Buffer) {
   return detectImageFormat(buffer);
 }
 
-export async function cinematicPlaceholderImage(
+/** Text-free fallback still — industrial tones, grain, vignette. Never embeds prompt text. */
+export async function industrialPlaceholderImage(
   prompt: string,
   width: number,
   height: number,
 ): Promise<Buffer> {
   const tmpPath = `/tmp/studio-placeholder-${Date.now()}.png`;
   const color = hashColorFromPrompt(prompt);
-  const label = sanitizeDrawtext(prompt);
+  const isProcess = /factory|conveyor|industrial|mixer|dough|biscuit|manufactur|production|stainless|oven|packaging/i.test(
+    prompt,
+  );
+  const baseColor = isProcess ? "0x1a2228" : color;
 
   await execFileAsync("ffmpeg", [
     "-y",
-    "-f", "lavfi",
-    "-i", `color=c=${color}:s=${width}x${height}:d=1`,
+    "-f",
+    "lavfi",
+    "-i",
+    `color=c=${baseColor}:s=${width}x${height}:d=1`,
     "-vf",
-    `vignette,drawtext=text='${label}':fontsize=18:fontcolor=white@0.7:x=(w-text_w)/2:y=h-80`,
-    "-frames:v", "1",
+    "vignette=angle=PI/4,noise=alls=12:allf=t+u,eq=brightness=-0.05:contrast=1.05",
+    "-frames:v",
+    "1",
     tmpPath,
   ]);
 
@@ -153,4 +295,13 @@ export async function cinematicPlaceholderImage(
   const buffer = await readFile(tmpPath);
   await unlink(tmpPath).catch(() => {});
   return buffer;
+}
+
+/** @deprecated Use industrialPlaceholderImage — kept for callers migrating off text overlays */
+export async function cinematicPlaceholderImage(
+  prompt: string,
+  width: number,
+  height: number,
+): Promise<Buffer> {
+  return industrialPlaceholderImage(prompt, width, height);
 }

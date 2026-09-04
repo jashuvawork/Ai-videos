@@ -45,10 +45,11 @@ COPY --from=builder /app/storage ./storage
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/next.config.ts ./next.config.ts
 
-RUN mkdir -p uploads renders && chown -R nextjs:nodejs uploads renders .next
+RUN mkdir -p uploads renders \
+  && chown -R nextjs:nodejs uploads renders .next node_modules
 
 USER nextjs
 EXPOSE 8080
 
 # API/UI + background job worker share the same filesystem for uploads/renders
-CMD ["sh", "-c", "npm run worker:poll & exec npm start"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && (npm run worker:poll & exec npm start)"]
