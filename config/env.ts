@@ -28,6 +28,8 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
   RUNWAY_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),
+  KLING_API_KEY: z.string().optional(),
   CURSOR_API_KEY: z.string().optional(),
   /** When false, Cursor key is stored but Studio LLM is used (Cloud Agents are very slow). */
   CURSOR_ENABLE_AGENTS: z

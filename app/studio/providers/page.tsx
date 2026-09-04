@@ -47,7 +47,8 @@ export default async function StudioProvidersPage() {
 
       <Card className="border-amber-900/40 bg-amber-950/20">
         <CardContent className="p-4 text-sm text-amber-200/90">
-          Set <code className="text-zinc-300">ELEVENLABS_API_KEY</code> on Railway/Vercel for cinematic voice.
+          Set <code className="text-zinc-300">ELEVENLABS_API_KEY</code> and{" "}
+          <code className="text-zinc-300">RUNWAY_API_KEY</code> on Railway/Vercel.
           Rotate any key that was shared in chat.
         </CardContent>
       </Card>

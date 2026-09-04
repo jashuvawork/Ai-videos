@@ -28,6 +28,7 @@ const NAV = [
   { href: "/studio/music", label: "Music", icon: Music },
   { href: "/studio/youtube", label: "YouTube", icon: Video },
   { href: "/studio/providers", label: "API Providers", icon: Zap },
+  { href: "/studio/admin", label: "Debug / Jobs", icon: Sparkles },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -72,10 +73,10 @@ export function StudioSidebar() {
         <div className="rounded-lg bg-zinc-900/60 border border-zinc-800 p-3">
           <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
             <Sparkles className="h-3.5 w-3.5 text-red-400" />
-            Phase 1 MVP
+            Full Pipeline
           </div>
           <p className="text-[11px] text-zinc-500 leading-relaxed">
-            Story Director + ElevenLabs voice + gameplay planning. Full render pipeline coming next.
+            Story → gameplay match → AI shots → ElevenLabs voice → FFmpeg render → QC → YouTube metadata.
           </p>
         </div>
       </div>
