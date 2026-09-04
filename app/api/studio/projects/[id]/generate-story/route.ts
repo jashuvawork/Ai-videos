@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { StoryDirectorService } from "@/services/story-director";
-import { CreateStoryProjectSchema } from "@/lib/story-studio/schemas";
+import {
+  CreateStoryProjectSchema,
+  formatZodError,
+  normalizePacing,
+  normalizeVoice,
+  pickStudioAdvancedSettings,
+} from "@/lib/story-studio/schemas";
 
 export async function POST(
   _request: Request,
@@ -25,26 +31,34 @@ export async function POST(
       data: { studioStatus: "STORY_GENERATING" },
     });
 
-    const input = CreateStoryProjectSchema.parse({
+    const settings = (project.studioSettings ?? {}) as Record<string, unknown>;
+
+    const parsed = CreateStoryProjectSchema.safeParse({
       idea: project.idea,
       genre: project.genre ?? "Crime Thriller",
       durationMinutes: Math.max(1, Math.round(project.duration / 60)),
-      visualStyle: project.studioSettings
-        ? (project.studioSettings as { visualStyle?: string }).visualStyle ?? "Cinematic GTA"
-        : "Cinematic GTA",
+      visualStyle:
+        typeof settings.visualStyle === "string" ? settings.visualStyle : "Cinematic GTA",
       narrationStyle: project.narrationStyle ?? "Deep cinematic male",
-      language: project.language,
+      language: project.language || "en",
       targetAudience: project.targetAudience ?? "YouTube 18-34",
       gameplaySource: project.gameplaySource ?? "User upload",
-      voice: project.voice,
-      musicStyle: "Suspense",
-      pacing: project.pacing ?? "fast",
+      voice: normalizeVoice(project.voice),
+      musicStyle: typeof settings.musicStyle === "string" ? settings.musicStyle : "Suspense",
+      pacing: normalizePacing(project.pacing),
       assetRights: project.assetRights ?? "OWNED",
-      advanced: project.studioSettings ?? undefined,
+      advanced: pickStudioAdvancedSettings(project.studioSettings),
     });
 
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: formatZodError(parsed.error) },
+        { status: 400 },
+      );
+    }
+
     const director = new StoryDirectorService();
-    const storyPlan = await director.generate(input);
+    const storyPlan = await director.generate(parsed.data);
 
     const updated = await prisma.project.update({
       where: { id },

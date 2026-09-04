@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { CreateStoryProjectSchema } from "@/lib/story-studio/schemas";
+import { CreateStoryProjectSchema, formatZodError } from "@/lib/story-studio/schemas";
 import { withResolvedAssetUrls } from "@/lib/asset-url";
 
 export async function GET() {
@@ -18,7 +18,11 @@ export async function POST(request: Request) {
   try {
     const user = await getSessionUser();
     const body = await request.json();
-    const data = CreateStoryProjectSchema.parse(body);
+    const parsed = CreateStoryProjectSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+    const data = parsed.data;
 
     const project = await prisma.project.create({
       data: {

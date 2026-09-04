@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProgressTracker } from "@/components/project/progress-tracker";
 import { VideoPlayer } from "@/components/project/video-player";
+import { fetchJson } from "@/lib/api-client";
 import type { StoryPlan } from "@/lib/story-studio/schemas";
 
 interface Scene {
@@ -58,16 +59,25 @@ export default function StudioProjectPage() {
   const [costs, setCosts] = useState<{ total: number; summary: Record<string, number> } | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/studio/projects/${id}`);
-    const data = await res.json();
+    const { data, response } = await fetchJson<{ project?: Project }>(`/api/studio/projects/${id}`);
+    if (!response.ok || !data.project) {
+      setProject(null);
+      return;
+    }
     setProject(data.project);
-    const running = data.project?.jobs?.find(
+    const running = data.project.jobs?.find(
       (j: { status: string }) => j.status === "RUNNING" || j.status === "PENDING",
     );
     if (running) setActiveJobId(running.id);
 
-    const costRes = await fetch(`/api/studio/projects/${id}/costs`);
-    if (costRes.ok) setCosts(await costRes.json());
+    try {
+      const { data: costData } = await fetchJson<{ total: number; summary: Record<string, number> }>(
+        `/api/studio/projects/${id}/costs`,
+      );
+      setCosts(costData);
+    } catch {
+      // costs optional
+    }
   }, [id]);
 
   useEffect(() => {
@@ -77,9 +87,10 @@ export default function StudioProjectPage() {
   const runAction = async (action: string, url: string) => {
     setBusy(action);
     try {
-      const res = await fetch(url, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Action failed");
+      const { data, response } = await fetchJson<{ job?: { id: string }; error?: string }>(url, {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error(data.error || "Action failed");
       if (data.job?.id) setActiveJobId(data.job.id);
       await load();
     } catch (e) {

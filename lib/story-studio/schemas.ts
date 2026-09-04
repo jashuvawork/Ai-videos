@@ -108,3 +108,44 @@ export const CreateStoryProjectSchema = z.object({
 export type StoryPlan = z.infer<typeof StoryPlanSchema>;
 export type StoryScene = z.infer<typeof StorySceneSchema>;
 export type CreateStoryProjectInput = z.infer<typeof CreateStoryProjectSchema>;
+
+const PACING_VALUES = ["slow", "medium", "fast"] as const;
+const VOICE_VALUES = ["MALE", "FEMALE", "NEUTRAL"] as const;
+
+export function normalizePacing(value: unknown): (typeof PACING_VALUES)[number] {
+  const raw = String(value ?? "fast").toLowerCase().trim();
+  return PACING_VALUES.includes(raw as (typeof PACING_VALUES)[number])
+    ? (raw as (typeof PACING_VALUES)[number])
+    : "fast";
+}
+
+export function normalizeVoice(value: unknown): (typeof VOICE_VALUES)[number] {
+  const raw = String(value ?? "MALE").toUpperCase().trim();
+  return VOICE_VALUES.includes(raw as (typeof VOICE_VALUES)[number])
+    ? (raw as (typeof VOICE_VALUES)[number])
+    : "MALE";
+}
+
+export function pickStudioAdvancedSettings(raw: unknown) {
+  if (!raw || typeof raw !== "object") return undefined;
+  const s = raw as Record<string, unknown>;
+  return {
+    maxAiVideoShots: Number(s.maxAiVideoShots) || 12,
+    maxBudgetUsd: Number(s.maxBudgetUsd) || 25,
+    gameplayPercent: Number(s.gameplayPercent) || 70,
+    aiVisualPercent: Number(s.aiVisualPercent) || 30,
+    subtitleStyle: typeof s.subtitleStyle === "string" ? s.subtitleStyle : "CINEMATIC",
+    qcThreshold: Number(s.qcThreshold) || 8,
+    shortsCount: Number(s.shortsCount) || 5,
+  };
+}
+
+export function formatZodError(error: unknown): string {
+  if (error && typeof error === "object" && "issues" in error) {
+    const issues = (error as { issues: Array<{ message: string; path: Array<string | number> }> }).issues;
+    if (issues.length > 0) {
+      return issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ");
+    }
+  }
+  return error instanceof Error ? error.message : "Validation failed";
+}

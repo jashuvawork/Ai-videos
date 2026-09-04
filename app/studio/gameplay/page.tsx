@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDuration } from "@/lib/utils";
+import { fetchJson } from "@/lib/api-client";
 
 interface Clip {
   id: string;
@@ -25,10 +26,13 @@ export default function GameplayPage() {
   const [assetRights, setAssetRights] = useState("OWNED");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const load = () => {
-    fetch("/api/studio/gameplay")
-      .then((r) => r.json())
-      .then((d) => setClips(d.clips || []));
+  const load = async () => {
+    try {
+      const { data } = await fetchJson<{ clips?: Clip[] }>("/api/studio/gameplay");
+      setClips(data.clips || []);
+    } catch {
+      setClips([]);
+    }
   };
 
   useEffect(() => {
@@ -41,9 +45,11 @@ export default function GameplayPage() {
       const form = new FormData();
       form.append("video", file);
       form.append("assetRights", assetRights);
-      const res = await fetch("/api/studio/gameplay", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
+      const { data, response } = await fetchJson<{ clip?: Clip; error?: string }>(
+        "/api/studio/gameplay",
+        { method: "POST", body: form },
+      );
+      if (!response.ok) throw new Error(data.error || "Upload failed");
       load();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Upload failed");

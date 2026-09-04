@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { fetchJson } from "@/lib/api-client";
 
 const GENRES = [
   "Crime Thriller",
@@ -66,14 +67,29 @@ export default function CreateStoryPage() {
     setLoading(true);
     setError("");
 
+    const gameplayPercent = Number(form.gameplayPercent);
+    const maxAiVideoShots = Number(form.maxAiVideoShots);
+    const qcThreshold = Number(form.qcThreshold);
+    const shortsCount = Number(form.shortsCount);
+    const durationMinutes = Number(form.durationMinutes);
+
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 1) {
+      setError("Please choose a valid video length.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const createRes = await fetch("/api/studio/projects", {
+      const { data: createData, response: createRes } = await fetchJson<{
+        project?: { id: string };
+        error?: string;
+      }>("/api/studio/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idea: form.idea,
+          idea: form.idea.trim(),
           genre: form.genre,
-          durationMinutes: Number(form.durationMinutes),
+          durationMinutes,
           visualStyle: form.visualStyle,
           narrationStyle: form.narrationStyle,
           language: form.language,
@@ -84,24 +100,25 @@ export default function CreateStoryPage() {
           pacing: form.pacing,
           assetRights: form.assetRights,
           advanced: {
-            maxAiVideoShots: Number(form.maxAiVideoShots),
-            gameplayPercent: Number(form.gameplayPercent),
-            aiVisualPercent: 100 - Number(form.gameplayPercent),
-            qcThreshold: Number(form.qcThreshold),
-            shortsCount: Number(form.shortsCount),
+            maxAiVideoShots: Number.isFinite(maxAiVideoShots) ? maxAiVideoShots : 12,
+            gameplayPercent: Number.isFinite(gameplayPercent) ? gameplayPercent : 70,
+            aiVisualPercent: Number.isFinite(gameplayPercent) ? 100 - gameplayPercent : 30,
+            qcThreshold: Number.isFinite(qcThreshold) ? qcThreshold : 8,
+            shortsCount: Number.isFinite(shortsCount) ? shortsCount : 5,
             visualStyle: form.visualStyle,
             musicStyle: form.musicStyle,
           },
         }),
       });
 
-      const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error || "Failed to create project");
+      if (!createRes.ok || !createData.project?.id) {
+        throw new Error(createData.error || "Failed to create project");
+      }
 
-      const genRes = await fetch(`/api/studio/projects/${createData.project.id}/generate-story`, {
-        method: "POST",
-      });
-      const genData = await genRes.json();
+      const { data: genData, response: genRes } = await fetchJson<{ error?: string }>(
+        `/api/studio/projects/${createData.project.id}/generate-story`,
+        { method: "POST" },
+      );
       if (!genRes.ok) throw new Error(genData.error || "Story generation failed");
 
       router.push(`/studio/projects/${createData.project.id}`);
@@ -120,7 +137,7 @@ export default function CreateStoryPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
         <Card className="border-zinc-800 bg-zinc-900/40">
           <CardHeader>
             <CardTitle className="text-zinc-200 flex items-center gap-2">
@@ -241,7 +258,8 @@ export default function CreateStoryPage() {
               <div className="space-y-2">
                 <Label>Max AI video shots</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={form.maxAiVideoShots}
                   onChange={(e) => setForm({ ...form, maxAiVideoShots: e.target.value })}
                   className="bg-zinc-950 border-zinc-700"
@@ -250,9 +268,8 @@ export default function CreateStoryPage() {
               <div className="space-y-2">
                 <Label>Gameplay % (rest = AI visuals)</Label>
                 <Input
-                  type="number"
-                  min={0}
-                  max={100}
+                  type="text"
+                  inputMode="numeric"
                   value={form.gameplayPercent}
                   onChange={(e) => setForm({ ...form, gameplayPercent: e.target.value })}
                   className="bg-zinc-950 border-zinc-700"
@@ -261,7 +278,8 @@ export default function CreateStoryPage() {
               <div className="space-y-2">
                 <Label>QC threshold (0-10)</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={form.qcThreshold}
                   onChange={(e) => setForm({ ...form, qcThreshold: e.target.value })}
                   className="bg-zinc-950 border-zinc-700"
@@ -270,7 +288,8 @@ export default function CreateStoryPage() {
               <div className="space-y-2">
                 <Label>Shorts to generate</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={form.shortsCount}
                   onChange={(e) => setForm({ ...form, shortsCount: e.target.value })}
                   className="bg-zinc-950 border-zinc-700"
