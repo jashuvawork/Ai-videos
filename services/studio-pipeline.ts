@@ -95,10 +95,14 @@ export class StudioPipelineProcessor {
     await this.updateStudioStatus(projectId, "AI_SHOTS_GENERATING");
 
     const imageFirstVideo =
+      (isRunwayConfigured() &&
+        (env.AI_VIDEO_PROVIDER === "runway" ||
+          env.AI_VIDEO_PROVIDER === "studio" ||
+          env.AI_VIDEO_PROVIDER === "builtin" ||
+          env.AI_VIDEO_PROVIDER === "local")) ||
       env.AI_VIDEO_PROVIDER === "studio" ||
       env.AI_VIDEO_PROVIDER === "builtin" ||
-      env.AI_VIDEO_PROVIDER === "local" ||
-      (env.AI_VIDEO_PROVIDER === "runway" && isRunwayConfigured());
+      env.AI_VIDEO_PROVIDER === "local";
 
     await mapWithConcurrency(hydratedScenes, 2, async ({ record, storyScene }) => {
       const scene = await prisma.scene.findUnique({ where: { id: record.id } });

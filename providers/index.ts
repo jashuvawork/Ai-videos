@@ -76,7 +76,19 @@ function createImageProvider(): ImageProvider {
 
 function createVideoProvider(): VideoProvider {
   const provider = env.AI_VIDEO_PROVIDER;
-  if (provider === "runway" && isRunwayConfigured()) {
+  const runwayReady = isRunwayConfigured();
+
+  if (
+    runwayReady &&
+    (provider === "runway" ||
+      provider === "studio" ||
+      provider === "builtin" ||
+      provider === "local" ||
+      provider === "ffmpeg")
+  ) {
+    return new RunwayVideoProvider();
+  }
+  if (provider === "runway" && runwayReady) {
     return new RunwayVideoProvider();
   }
   if (provider === "studio" || provider === "builtin" || provider === "local" || provider === "ffmpeg") {
@@ -85,7 +97,7 @@ function createVideoProvider(): VideoProvider {
   if (provider === "mock") {
     return new MockVideoProvider();
   }
-  return new StudioVideoProvider();
+  return runwayReady ? new RunwayVideoProvider() : new StudioVideoProvider();
 }
 
 function createVoiceProvider(): VoiceProvider {
