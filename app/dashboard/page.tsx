@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDuration } from "@/lib/utils";
+import { fetchJson } from "@/lib/api-client";
 
 interface Project {
   id: string;
@@ -34,14 +35,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((data) => setProjects(data.projects || []))
+    fetchJson<{ projects?: Project[] }>("/api/projects")
+      .then(({ data }) => setProjects(data.projects || []))
+      .catch(() => setProjects([]))
       .finally(() => setLoading(false));
   }, []);
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    await fetchJson(`/api/projects/${id}`, { method: "DELETE" });
     setProjects((prev) => prev.filter((p) => p.id !== id));
   };
 

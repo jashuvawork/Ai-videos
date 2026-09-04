@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { fetchJson } from "@/lib/api-client";
 
 interface Scene {
   id: string;
@@ -32,7 +33,7 @@ export function SceneEditor({ scenes, projectId, onRegenerate }: SceneEditorProp
   const handleRegenerate = async (sceneId: string) => {
     setRegenerating(sceneId);
     try {
-      await fetch(`/api/projects/${projectId}/scenes/${sceneId}/regenerate`, { method: "POST" });
+      await fetchJson(`/api/projects/${projectId}/scenes/${sceneId}/regenerate`, { method: "POST" });
       onRegenerate(sceneId);
     } finally {
       setRegenerating(null);

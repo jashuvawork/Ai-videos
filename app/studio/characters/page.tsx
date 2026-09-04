@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { fetchJson } from "@/lib/api-client";
 
 interface Project {
   id: string;
@@ -15,9 +16,9 @@ export default function CharactersPage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    fetch("/api/studio/projects")
-      .then((r) => r.json())
-      .then((d) => setProjects(d.projects || []));
+    fetchJson<{ projects?: Project[] }>("/api/studio/projects")
+      .then(({ data }) => setProjects(data.projects || []))
+      .catch(() => setProjects([]));
   }, []);
 
   const allChars = projects.flatMap((p) =>

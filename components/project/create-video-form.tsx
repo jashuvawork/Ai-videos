@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { SUPPORTED_LANGUAGES } from "@/config/video";
+import { fetchJson, toUserFacingError } from "@/lib/api-client";
 
 const VIDEO_TYPES = [
   { value: "STORY", label: "Story" },
@@ -123,54 +123,59 @@ export function CreateVideoForm() {
     setError("");
 
     try {
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idea: form.idea,
-          videoType: form.videoType,
-          platform: form.platform,
-          aspectRatio: form.aspectRatio,
-          duration: parseInt(form.duration, 10),
-          visualStyle: form.visualStyle,
-          voice: form.voice,
-          language: form.language,
-          generationMode: form.generationMode,
-          visualGenerationMode: form.visualGenerationMode,
-          magicGenerate: magicMode,
-        }),
-      });
+      const { data, response } = await fetchJson<{ project?: { id: string }; error?: string }>(
+        "/api/projects",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idea: form.idea.trim(),
+            videoType: form.videoType,
+            platform: form.platform,
+            aspectRatio: form.aspectRatio,
+            duration: parseInt(form.duration, 10),
+            visualStyle: form.visualStyle,
+            voice: form.voice,
+            language: form.language,
+            generationMode: form.generationMode,
+            visualGenerationMode: form.visualGenerationMode,
+            magicGenerate: magicMode,
+          }),
+        },
+      );
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create project");
+      if (!response.ok || !data.project?.id) {
+        throw new Error(data.error || "Failed to create project");
+      }
 
       if (referenceVideo) {
         const fd = new FormData();
         fd.append("video", referenceVideo);
-        const refRes = await fetch(`/api/projects/${data.project.id}/reference-video`, {
-          method: "POST",
-          body: fd,
-        });
+        const { data: refData, response: refRes } = await fetchJson<{ error?: string }>(
+          `/api/projects/${data.project.id}/reference-video`,
+          { method: "POST", body: fd },
+        );
         if (!refRes.ok) {
-          const refData = await refRes.json();
           throw new Error(refData.error || "Failed to analyze reference video");
         }
       }
 
-      const genRes = await fetch(`/api/projects/${data.project.id}/generate`, { method: "POST" });
-      const genData = await genRes.json();
+      const { data: genData, response: genRes } = await fetchJson<{ job?: { id: string }; error?: string }>(
+        `/api/projects/${data.project.id}/generate`,
+        { method: "POST" },
+      );
       if (!genRes.ok) throw new Error(genData.error || "Failed to start generation");
 
-      router.push(`/projects/${data.project.id}?jobId=${genData.job.id}`);
+      router.push(`/projects/${data.project.id}?jobId=${genData.job?.id ?? ""}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(toUserFacingError(err));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate className="space-y-8">
       <div className="space-y-3">
         <Label className="text-zinc-300 text-base">Tell me what you want your video to be about…</Label>
         <Textarea

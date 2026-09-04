@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { fetchJson } from "@/lib/api-client";
 
 interface Job {
   id: string;
@@ -24,9 +25,9 @@ export default function StudioAdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/studio/admin/jobs")
-      .then((r) => r.json())
-      .then((d) => setJobs(d.jobs || []))
+    fetchJson<{ jobs?: Job[] }>("/api/studio/admin/jobs")
+      .then(({ data }) => setJobs(data.jobs || []))
+      .catch(() => setJobs([]))
       .finally(() => setLoading(false));
   }, []);
 

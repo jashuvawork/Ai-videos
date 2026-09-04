@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Video, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { fetchJson } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
 
 interface Project {
@@ -24,9 +25,9 @@ export default function YoutubePage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    fetch("/api/studio/projects")
-      .then((r) => r.json())
-      .then((d) => setProjects(d.projects || []));
+    fetchJson<{ projects?: Project[] }>("/api/studio/projects")
+      .then(({ data }) => setProjects(data.projects || []))
+      .catch(() => setProjects([]));
   }, []);
 
   const ready = projects.filter(

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { fetchJson, toUserFacingError } from "@/lib/api-client";
 
 type RatioPreset = {
   label: string;
@@ -67,8 +68,15 @@ export function Gen4Studio() {
       stopPolling();
       pollRef.current = setInterval(async () => {
         try {
-          const response = await fetch(`/api/gen4/tasks/${id}`);
-          const data = await response.json();
+          const { data, response } = await fetchJson<{
+            status: string;
+            progress?: number;
+            provider?: string;
+            videoUrl?: string;
+            outputUrl?: string;
+            failure?: string;
+            error?: string;
+          }>(`/api/gen4/tasks/${id}`);
           if (!response.ok) {
             throw new Error(data.error || "Failed to poll task");
           }
@@ -116,8 +124,12 @@ export function Gen4Studio() {
     if (imageFile) formData.set("image", imageFile);
 
     try {
-      const response = await fetch("/api/gen4/video", { method: "POST", body: formData });
-      const data = await response.json();
+      const { data, response } = await fetchJson<{
+        taskId: string;
+        provider?: string;
+        status?: string;
+        error?: string;
+      }>("/api/gen4/video", { method: "POST", body: formData });
       if (!response.ok) {
         throw new Error(data.error || "Failed to start generation");
       }
@@ -128,8 +140,7 @@ export function Gen4Studio() {
       setProgress(5);
       pollTask(data.taskId);
     } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : "Generation failed";
-      setError(message);
+      setError(toUserFacingError(submitError));
       setIsSubmitting(false);
     }
   };

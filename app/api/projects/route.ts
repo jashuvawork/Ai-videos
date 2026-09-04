@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { CreateProjectSchema } from "@/lib/schemas";
+import { formatZodError } from "@/lib/story-studio/schemas";
 import { CostTrackingService } from "@/services/cost-tracking";
 import { withResolvedAssetUrls } from "@/lib/asset-url";
 
@@ -19,7 +20,11 @@ export async function POST(request: Request) {
   try {
     const user = await getSessionUser();
     const body = await request.json();
-    const data = CreateProjectSchema.parse(body);
+    const parsed = CreateProjectSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+    const data = parsed.data;
 
     const project = await prisma.project.create({
       data: {
@@ -43,7 +48,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ project: { ...project, estimatedCost } }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to create project";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const raw = error instanceof Error ? error.message : "Failed to create project";
+    const message = raw.includes("DATABASE_URL")
+      ? "Database not configured. Deploy on Railway with DATABASE_URL, or set NEXT_PUBLIC_API_BASE_URL on Vercel."
+      : raw;
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

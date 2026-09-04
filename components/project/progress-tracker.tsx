@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, Circle, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { STEP_LABELS } from "@/config/video";
+import { fetchJson } from "@/lib/api-client";
 
 const STEPS = [
   "CREATE_SCRIPT",
@@ -39,8 +40,12 @@ export function ProgressTracker({ jobId, onComplete }: ProgressTrackerProps) {
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/jobs/${jobId}`);
-        const data = await res.json();
+        const { data } = await fetchJson<{ job: {
+          step?: string;
+          progress: number;
+          status: string;
+          error?: string;
+        } }>(`/api/jobs/${jobId}`);
         setJob(data.job);
 
         if (data.job.status === "COMPLETED") {

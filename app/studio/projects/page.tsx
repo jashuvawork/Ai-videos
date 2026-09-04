@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatDuration } from "@/lib/utils";
+import { fetchJson } from "@/lib/api-client";
 
 interface Project {
   id: string;
@@ -19,9 +20,9 @@ export default function StudioProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    fetch("/api/studio/projects")
-      .then((r) => r.json())
-      .then((d) => setProjects(d.projects || []));
+    fetchJson<{ projects?: Project[] }>("/api/studio/projects")
+      .then(({ data }) => setProjects(data.projects || []))
+      .catch(() => setProjects([]));
   }, []);
 
   return (

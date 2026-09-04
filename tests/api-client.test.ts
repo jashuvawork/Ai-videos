@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseJsonResponse } from "@/lib/api-client";
+import { parseJsonResponse, apiUrl } from "@/lib/api-client";
 
-describe("parseJsonResponse", () => {
+describe("api-client", () => {
+  it("apiUrl uses relative path when no base set", () => {
+    expect(apiUrl("/api/projects")).toBe("/api/projects");
+  });
+
   it("parses valid JSON", async () => {
     const res = new Response(JSON.stringify({ ok: true }), {
       status: 200,

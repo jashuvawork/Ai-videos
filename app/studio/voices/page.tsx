@@ -5,14 +5,15 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { fetchJson } from "@/lib/api-client";
 
 export default function VoicesPage() {
   const [providers, setProviders] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    fetch("/api/studio/stats")
-      .then((r) => r.json())
-      .then((d) => setProviders(d.providers));
+    fetchJson<{ providers?: Record<string, unknown> }>("/api/studio/stats")
+      .then(({ data }) => setProviders(data.providers ?? null))
+      .catch(() => setProviders(null));
   }, []);
 
   return (

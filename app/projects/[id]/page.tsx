@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { VideoPlayer } from "@/components/project/video-player";
 import { ProgressTracker } from "@/components/project/progress-tracker";
 import { SceneEditor } from "@/components/project/scene-editor";
+import { fetchJson } from "@/lib/api-client";
 
 interface ProjectData {
   id: string;
@@ -56,9 +57,12 @@ function ProjectContent() {
   const [loading, setLoading] = useState(true);
 
   const fetchProject = useCallback(async () => {
-    const res = await fetch(`/api/projects/${projectId}`);
-    const data = await res.json();
-    setProject(data.project);
+    try {
+      const { data } = await fetchJson<{ project?: ProjectData }>(`/api/projects/${projectId}`);
+      setProject(data.project ?? null);
+    } catch {
+      setProject(null);
+    }
     setLoading(false);
   }, [projectId]);
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDuration } from "@/lib/utils";
+import { fetchJson } from "@/lib/api-client";
 
 interface Stats {
   projects: number;
@@ -33,15 +34,15 @@ export default function StudioDashboardPage() {
   const [providers, setProviders] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    fetch("/api/studio/stats")
-      .then((r) => r.json())
-      .then((data) => {
-        setStats(data.stats);
-        setProviders(data.providers);
-      });
-    fetch("/api/studio/projects")
-      .then((r) => r.json())
-      .then((data) => setProjects(data.projects || []));
+    fetchJson<{ stats?: Stats; providers?: Record<string, unknown> }>("/api/studio/stats")
+      .then(({ data }) => {
+        setStats(data.stats ?? null);
+        setProviders(data.providers ?? null);
+      })
+      .catch(() => {});
+    fetchJson<{ projects?: Project[] }>("/api/studio/projects")
+      .then(({ data }) => setProjects(data.projects || []))
+      .catch(() => setProjects([]));
   }, []);
 
   const cards = [

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { fetchJson } from "@/lib/api-client";
+import { fetchJson, toUserFacingError } from "@/lib/api-client";
 
 const GENRES = [
   "Crime Thriller",
@@ -123,7 +123,7 @@ export default function CreateStoryPage() {
 
       router.push(`/studio/projects/${createData.project.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(toUserFacingError(err));
       setLoading(false);
     }
   };
