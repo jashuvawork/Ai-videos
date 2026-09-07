@@ -74,7 +74,7 @@ export function buildVisualPrompt(params: {
     isProcess ? REAL_WORLD_ACTION_SUFFIX : SOCIAL_STORY_FACE_LOCK,
     isProcess ? NATURAL_IMPERFECTION_DIRECTIVE : "",
     NO_TEXT_VISUAL_SUFFIX,
-    isProcess ? HYPER_REALISM_SUFFIX : "photoreal live-action, real people and places, not a slideshow",
+    isProcess ? HYPER_REALISM_SUFFIX : "photoreal live-action, natural daylight colors, real people and places, not a slideshow",
     aspectNote,
   ]
     .filter(Boolean)
