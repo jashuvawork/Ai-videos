@@ -22,7 +22,7 @@ export function captureMediumForContent(contentType: string): string {
 }
 
 export const STORY_CAPTURE_MEDIUM =
-  "photoreal live-action movie scene of this exact moment, people and places filling the frame, natural skin texture, motivated lighting, rich color";
+  "photoreal live-action scene like a real phone photo, natural daylight color, accurate skin tones, no orange-teal grade, no sepia, people and places filling the frame";
 
 export const DEFAULT_LENS_CHARACTER =
   "natural eye-level view, shallow depth of field on close-ups, physically accurate focus falloff";

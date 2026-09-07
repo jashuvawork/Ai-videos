@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CROSSFADE_SECONDS,
+  FILM_LOOK_FILTER,
   SOCIAL_STORY_FACE_LOCK,
   SOCIAL_STORY_NO_TEXT,
   buildXfadeFilter,
@@ -42,6 +43,8 @@ describe("cinematic story prompts", () => {
     });
     expect(prompt).toContain("Marcus");
     expect(prompt).toMatch(/photoreal live-action/i);
+    expect(prompt).toMatch(/natural daylight|phone photo/i);
+    expect(prompt.toLowerCase()).not.toContain("rich color");
     expect(prompt).toContain("SCENE: Taxi drives through rain at night");
     expect(prompt).toContain(SOCIAL_STORY_NO_TEXT);
     expect(prompt).toContain(SOCIAL_STORY_FACE_LOCK);
@@ -54,6 +57,12 @@ describe("cinematic story prompts", () => {
   it("uses the default social fade length", () => {
     expect(CROSSFADE_SECONDS).toBeGreaterThan(0.2);
     expect(CROSSFADE_SECONDS).toBeLessThan(1);
+  });
+
+  it("does not apply a heavy film color grade", () => {
+    expect(FILM_LOOK_FILTER).not.toMatch(/vignette/);
+    expect(FILM_LOOK_FILTER).not.toMatch(/saturation=1\.[1-9]/);
+    expect(FILM_LOOK_FILTER).not.toMatch(/gamma=/);
   });
 
   it("preserves 9:16 when capping Pollinations size", () => {
