@@ -23,15 +23,24 @@ export function buildVisualPrompt(params: {
   emotion: string;
 } {
   const { scene, continuity, aspectRatio, characters } = params;
+  const isProcess =
+    continuity.contentType === "manufacturing" || continuity.contentType === "food_process";
 
-  const continuityParts = [
-    continuity.productReference,
-    continuity.phoneIdentity,
-    continuity.factoryIdentity,
-    continuity.environmentVisual,
-    continuity.machineVisual,
-  ];
+  const continuityParts = isProcess
+    ? [
+        continuity.productReference,
+        continuity.phoneIdentity,
+        continuity.factoryIdentity,
+        continuity.environmentVisual,
+        continuity.machineVisual,
+      ]
+    : [
+        continuity.characterIdentity,
+        continuity.characterVisual,
+        continuity.environmentVisual || continuity.factoryIdentity,
+      ];
   if (
+    isProcess &&
     continuity.characterIdentity &&
     scene.visualDescription.match(/worker|engineer|technician|factory|assembly|hands|gloved/i)
   ) {
@@ -60,11 +69,11 @@ export function buildVisualPrompt(params: {
     `Lighting: ${scene.lighting}`,
     continuity.captureMedium,
     continuity.lensCharacter,
-    SIMPLE_MOTION_DIRECTIVE,
-    REAL_WORLD_ACTION_SUFFIX,
-    NATURAL_IMPERFECTION_DIRECTIVE,
+    isProcess ? SIMPLE_MOTION_DIRECTIVE : "one clear action happening now",
+    isProcess ? REAL_WORLD_ACTION_SUFFIX : "",
+    isProcess ? NATURAL_IMPERFECTION_DIRECTIVE : "",
     NO_TEXT_VISUAL_SUFFIX,
-    HYPER_REALISM_SUFFIX,
+    isProcess ? HYPER_REALISM_SUFFIX : "photoreal live-action, real people and places, not a slideshow",
     aspectNote,
   ]
     .filter(Boolean)

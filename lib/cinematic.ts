@@ -17,7 +17,7 @@ export const SOCIAL_STORY_NEGATIVE =
 
 /** Light grade only — heavy vignette + double EQ crushed previous exports. */
 export const FILM_LOOK_FILTER =
-  "eq=contrast=1.04:saturation=1.03:gamma=1.02:brightness=0.018,unsharp=5:5:0.22:5:5:0.0,vignette=PI/8,noise=alls=2:allf=t";
+  "eq=contrast=1.03:saturation=1.04:gamma=1.04:brightness=0.03,unsharp=5:5:0.2:5:5:0.0,vignette=PI/10,noise=alls=2:allf=t";
 
 export function sceneStartTimes(durations: number[], fadeSeconds = CROSSFADE_SECONDS): number[] {
   if (durations.length === 0) return [];

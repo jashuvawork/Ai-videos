@@ -101,9 +101,20 @@ describe("Hyper-realistic director", () => {
   it("keeps story prompts on the scene, not filming equipment", () => {
     const continuity = buildContinuityBible("narrative", "A boy discovers a secret room beneath his house");
     const scene = {
-      ...MANUFACTURING_SCENES[1],
+      key: "discovery",
+      purpose: "reveal",
+      priority: 1,
+      narration: "",
       visualDescription: "A boy lifts a dusty floorboard and stares into a hidden room",
+      cameraMovement: "slow push-in",
+      cameraAngle: "medium shot",
+      lighting: "warm practical lamps",
       environment: "old wooden house basement",
+      soundEffects: [],
+      musicMood: "mystery",
+      caption: "",
+      emotion: "wonder",
+      transition: "cut",
     };
     const built = buildVisualPrompt({
       scene,
@@ -116,6 +127,8 @@ describe("Hyper-realistic director", () => {
     expect(built.visualPrompt).toMatch(/photoreal live-action/i);
     expect(built.visualPrompt.toLowerCase()).not.toContain("cinema camera");
     expect(built.visualPrompt.toLowerCase()).not.toContain("35mm film");
+    expect(built.visualPrompt.toLowerCase()).not.toContain("conveyor");
+    expect(built.visualPrompt.toLowerCase()).not.toContain("machine cycles");
     expect(built.negativePrompt).toMatch(/tripod|gimbal|clapperboard/i);
   });
 
