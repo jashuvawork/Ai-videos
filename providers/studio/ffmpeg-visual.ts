@@ -274,11 +274,11 @@ export async function industrialPlaceholderImage(
   height: number,
 ): Promise<Buffer> {
   const tmpPath = `/tmp/studio-placeholder-${Date.now()}.png`;
-  const color = hashColorFromPrompt(prompt);
   const isProcess = /factory|conveyor|industrial|mixer|dough|biscuit|manufactur|production|stainless|oven|packaging/i.test(
     prompt,
   );
-  const baseColor = isProcess ? "0x1a2228" : color;
+  // Never use a neon hash color — that became a lime-green first frame on failed stills.
+  const baseColor = isProcess ? "0x1a2228" : "0x2a241c";
 
   await execFileAsync("ffmpeg", [
     "-y",
