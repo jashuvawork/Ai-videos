@@ -18,8 +18,14 @@ export function captureMediumForContent(contentType: string): string {
   if (contentType === "manufacturing" || contentType === "food_process") {
     return `${DOCUMENTARY_CAPTURE_MEDIUM}. ${INDUSTRIAL_DOCUMENTARY_CAPTURE}`;
   }
-  return `${DOCUMENTARY_CAPTURE_MEDIUM}. cinematic documentary realism`;
+  return STORY_CAPTURE_MEDIUM;
 }
 
+export const STORY_CAPTURE_MEDIUM =
+  "photoreal live-action movie scene of this exact moment, people and places filling the frame, natural skin texture, motivated lighting, rich color";
+
 export const DEFAULT_LENS_CHARACTER =
-  "documentary lens, natural perspective, realistic focal length, shallow depth of field on close-ups, physically accurate focus falloff";
+  "natural eye-level view, shallow depth of field on close-ups, physically accurate focus falloff";
+
+export const STORY_VIEWPOINT =
+  "the subject is the story action, never filming equipment, no camera body, no tripod, no gimbal";

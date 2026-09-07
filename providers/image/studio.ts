@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { SOCIAL_STORY_LOOK, SOCIAL_STORY_NEGATIVE, SOCIAL_STORY_NO_TEXT } from "@/lib/cinematic";
 import { ProviderError } from "@/providers/shared/errors";
 import {
   fetchPollinationsImage,
@@ -22,12 +23,14 @@ function buildStudioImagePrompt(options: ImageGenerateOptions): string {
       "workers operating equipment not posing at camera",
       "no visible text no titles no watermarks",
     );
-  } else {
-    parts.push("cinematic photorealistic, dramatic lighting, film still, 8k detail");
+  } else if (!options.prompt.includes("photoreal live-action")) {
+    parts.push(SOCIAL_STORY_LOOK, SOCIAL_STORY_NO_TEXT);
   }
 
   if (options.negativePrompt) {
-    parts.push(`avoid ${options.negativePrompt}`);
+    parts.push(`avoid ${options.negativePrompt}, ${SOCIAL_STORY_NEGATIVE}`);
+  } else {
+    parts.push(`avoid ${SOCIAL_STORY_NEGATIVE}`);
   }
 
   return parts.filter(Boolean).join(", ");

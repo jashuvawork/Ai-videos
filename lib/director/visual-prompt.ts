@@ -23,15 +23,24 @@ export function buildVisualPrompt(params: {
   emotion: string;
 } {
   const { scene, continuity, aspectRatio, characters } = params;
+  const isProcess =
+    continuity.contentType === "manufacturing" || continuity.contentType === "food_process";
 
-  const continuityParts = [
-    continuity.productReference,
-    continuity.phoneIdentity,
-    continuity.factoryIdentity,
-    continuity.environmentVisual,
-    continuity.machineVisual,
-  ];
+  const continuityParts = isProcess
+    ? [
+        continuity.productReference,
+        continuity.phoneIdentity,
+        continuity.factoryIdentity,
+        continuity.environmentVisual,
+        continuity.machineVisual,
+      ]
+    : [
+        continuity.characterIdentity,
+        continuity.characterVisual,
+        continuity.environmentVisual || continuity.factoryIdentity,
+      ];
   if (
+    isProcess &&
     continuity.characterIdentity &&
     scene.visualDescription.match(/worker|engineer|technician|factory|assembly|hands|gloved/i)
   ) {
@@ -53,18 +62,18 @@ export function buildVisualPrompt(params: {
         : "";
 
   const visualPrompt = [
-    continuity.captureMedium,
-    continuity.lensCharacter,
     scene.visualDescription,
     `Environment: ${scene.environment}`,
     continuityParts.join(". "),
-    `Camera: ${scene.cameraAngle}, ${scene.cameraMovement}`,
+    `viewpoint: ${scene.cameraAngle}, ${scene.cameraMovement}`,
     `Lighting: ${scene.lighting}`,
-    SIMPLE_MOTION_DIRECTIVE,
-    REAL_WORLD_ACTION_SUFFIX,
-    NATURAL_IMPERFECTION_DIRECTIVE,
+    continuity.captureMedium,
+    continuity.lensCharacter,
+    isProcess ? SIMPLE_MOTION_DIRECTIVE : "one clear action happening now",
+    isProcess ? REAL_WORLD_ACTION_SUFFIX : "",
+    isProcess ? NATURAL_IMPERFECTION_DIRECTIVE : "",
     NO_TEXT_VISUAL_SUFFIX,
-    HYPER_REALISM_SUFFIX,
+    isProcess ? HYPER_REALISM_SUFFIX : "photoreal live-action, real people and places, not a slideshow",
     aspectNote,
   ]
     .filter(Boolean)

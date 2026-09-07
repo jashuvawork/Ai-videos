@@ -116,7 +116,7 @@ export default function CreateStoryPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-zinc-100">Create Story</h1>
         <p className="text-zinc-500 mt-1">
-          Turn your idea into a cinematic YouTube production plan — gameplay + AI inserts + voice.
+          Cinematic story video for YouTube and Instagram — photoreal picture, voiceover only, no on-screen captions.
         </p>
       </div>
 

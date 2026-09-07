@@ -14,7 +14,7 @@ export default function HomePage() {
             Create an AI Video
           </h1>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
-            Give me an idea. I&apos;ll turn it into a video.
+            Give me an idea. I&apos;ll cut a cinematic story video — voiceover, no captions — ready for YouTube or Instagram.
           </p>
         </div>
 
@@ -24,9 +24,9 @@ export default function HomePage() {
 
         <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
           {[
-            { title: "Story → Script", desc: "AI writes compelling narratives" },
-            { title: "Scenes → Visuals", desc: "Generated images & video clips" },
-            { title: "Voice → MP4", desc: "Narration, music, and rendering" },
+            { title: "Story → Script", desc: "A hook, beats, and a voiceover-led story" },
+            { title: "Scenes → Film look", desc: "Photoreal shots, no on-screen text" },
+            { title: "Voice → MP4", desc: "Narration over music, ready to post" },
           ].map((item) => (
             <div key={item.title} className="rounded-xl border border-zinc-800/50 bg-zinc-900/30 p-6">
               <h3 className="font-semibold text-zinc-200 mb-1">{item.title}</h3>

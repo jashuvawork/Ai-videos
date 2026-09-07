@@ -90,7 +90,7 @@ export function CreateVideoForm() {
     voice: "MALE",
     language: "en",
     generationMode: "FAST",
-    visualGenerationMode: "IMAGES",
+    visualGenerationMode: "AUTOMATIC",
   });
 
   const handleIdeaChange = (idea: string) => {

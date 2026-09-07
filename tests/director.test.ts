@@ -98,6 +98,40 @@ describe("Hyper-realistic director", () => {
     expect(story.scenes.every((s) => s.narration === "")).toBe(true);
   });
 
+  it("keeps story prompts on the scene, not filming equipment", () => {
+    const continuity = buildContinuityBible("narrative", "A boy discovers a secret room beneath his house");
+    const scene = {
+      key: "discovery",
+      purpose: "reveal",
+      priority: 1,
+      narration: "",
+      visualDescription: "A boy lifts a dusty floorboard and stares into a hidden room",
+      cameraMovement: "slow push-in",
+      cameraAngle: "medium shot",
+      lighting: "warm practical lamps",
+      environment: "old wooden house basement",
+      soundEffects: [],
+      musicMood: "mystery",
+      caption: "",
+      emotion: "wonder",
+      transition: "cut",
+    };
+    const built = buildVisualPrompt({
+      scene,
+      continuity,
+      visualStyle: "PHOTOREALISTIC",
+      aspectRatio: "RATIO_9_16",
+    });
+
+    expect(built.visualPrompt.startsWith("A boy lifts a dusty floorboard")).toBe(true);
+    expect(built.visualPrompt).toMatch(/photoreal live-action/i);
+    expect(built.visualPrompt.toLowerCase()).not.toContain("cinema camera");
+    expect(built.visualPrompt.toLowerCase()).not.toContain("35mm film");
+    expect(built.visualPrompt.toLowerCase()).not.toContain("conveyor");
+    expect(built.visualPrompt.toLowerCase()).not.toContain("machine cycles");
+    expect(built.negativePrompt).toMatch(/tripod|gimbal|clapperboard/i);
+  });
+
   it("builds visual prompts with no-text negative prompts", () => {
     const continuity = buildContinuityBible("manufacturing", "smartphone factory");
     const scene = MANUFACTURING_SCENES[1];
@@ -165,6 +199,28 @@ describe("MockLLM director integration", () => {
     expect(story.scenes.length).toBeGreaterThanOrEqual(8);
     expect(story.scenes.every((s) => s.caption === "")).toBe(true);
     expect(story.scenes.some((s) => /robotic|conveyor|fixture|clamp|assembly/i.test(s.visualDescription))).toBe(
+      true,
+    );
+  });
+});
+
+describe("Narrative story pipeline", () => {
+  it("does not treat a story idea as a food factory", () => {
+    expect(detectProcessSubject("A boy discovers a secret room beneath his house")).toBeNull();
+    const story = generateDirectorStory({
+      idea: "A boy discovers a secret room beneath his house.",
+      duration: 30,
+      language: "en",
+      tone: "cinematic",
+      platform: "INSTAGRAM_REEL",
+      visualStyle: "PHOTOREALISTIC",
+      generationMode: "FAST",
+      videoType: "STORY",
+      voice: "MALE",
+    });
+    expect(story.continuity.contentType).toBe("narrative");
+    expect(story.scenes.some((s) => /secret room|boy|house/i.test(s.visualDescription))).toBe(true);
+    expect(story.scenes.every((s) => !/food-grade factory|stainless steel surfaces/i.test(s.visualDescription))).toBe(
       true,
     );
   });

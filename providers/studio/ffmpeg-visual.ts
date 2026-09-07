@@ -1,6 +1,7 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { writeFile, unlink, readFile } from "fs/promises";
+import { pollinationsFrameSize } from "@/lib/cinematic";
 import { assertValidImageBuffer, detectImageFormat } from "./image-utils";
 import { buildMotionFilterChain } from "./motion-engine";
 
@@ -31,11 +32,12 @@ export async function fetchPollinationsImage(
   height: number,
   seed?: number,
 ): Promise<Buffer> {
-  const cappedW = Math.min(1280, Math.max(256, width));
-  const cappedH = Math.min(1280, Math.max(256, height));
+  const frame = pollinationsFrameSize(width, height);
   const url = new URL("https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt));
-  url.searchParams.set("width", String(cappedW));
-  url.searchParams.set("height", String(cappedH));
+  url.searchParams.set("width", String(frame.width));
+  url.searchParams.set("height", String(frame.height));
+  url.searchParams.set("model", "flux");
+  url.searchParams.set("quality", "high");
   url.searchParams.set("nologo", "true");
   url.searchParams.set("seed", String(seed ?? hashSeed(prompt)));
 
@@ -80,7 +82,7 @@ export async function imageBufferToVideo(
   await writeFile(inputPath, imageBuffer);
 
   const totalFrames = Math.ceil(safeDuration * fps);
-  const vf = buildMotionFilterChain(width, height, totalFrames, cameraMovement);
+  const vf = buildMotionFilterChain(width, height, totalFrames, cameraMovement, fps);
 
   try {
     await execFileAsync("ffmpeg", [

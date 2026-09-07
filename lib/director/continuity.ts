@@ -1,6 +1,6 @@
 import type { ContentType, ContinuityBible } from "./types";
 import { buildContinuityIdentities } from "./continuity-engine";
-import { captureMediumForContent, DEFAULT_LENS_CHARACTER } from "./capture-medium";
+import { captureMediumForContent, DEFAULT_LENS_CHARACTER, STORY_VIEWPOINT } from "./capture-medium";
 import { ABSOLUTE_NEGATIVE_PROMPT } from "./no-text";
 
 export function buildContinuityBible(contentType: ContentType, idea: string): ContinuityBible {
@@ -60,7 +60,7 @@ export function buildContinuityBible(contentType: ContentType, idea: string): Co
     characterIdentity: identities.characterIdentity,
     productReference: identities.productReference,
     captureMedium,
-    lensCharacter: DEFAULT_LENS_CHARACTER,
+    lensCharacter: `${DEFAULT_LENS_CHARACTER}. ${STORY_VIEWPOINT}`,
     negativePromptBase: ABSOLUTE_NEGATIVE_PROMPT,
   };
 }
