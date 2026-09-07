@@ -23,7 +23,7 @@ export class ProcessContinuityService {
     const subject = detectProcessSubject(idea);
     if (subject === "biscuits") return BISCUIT_PROCESS;
     if (subject === "chocolate") return CHOCOLATE_PROCESS;
-    if (subject === "smartphone" || subject === "generic_manufacturing") return [];
+    if (!subject || subject === "smartphone" || subject === "generic_manufacturing") return [];
     return GENERIC_FOOD_PROCESS(subject, idea);
   }
 
@@ -48,7 +48,7 @@ export class ProcessContinuityService {
 
   getTemplatesForIdea(idea: string): SceneTemplate[] | null {
     const subject = detectProcessSubject(idea);
-    if (subject === "smartphone" || subject === "generic_manufacturing") return null;
+    if (!subject || subject === "smartphone" || subject === "generic_manufacturing") return null;
     const chain = this.buildChain(idea);
     if (chain.length === 0) return null;
     return this.toSceneTemplates(chain);
@@ -68,14 +68,14 @@ function buildProcessVisual(stage: ProcessStage): string {
   ].join(" ");
 }
 
-export function detectProcessSubject(idea: string): string {
+export function detectProcessSubject(idea: string): string | null {
   const t = idea.toLowerCase();
   if (/\b(biscuits?|cookies?|crackers?)\b/.test(t)) return "biscuits";
   if (/\b(smartphones?|mobile phones?|cell phones?|phone making)\b/.test(t)) return "smartphone";
   if (/\b(chocolate|cocoa)\b/.test(t)) return "chocolate";
   if (/\b(bread|pizza|pasta|cakes?)\b/.test(t)) return t.match(/\b(bread|pizza|pasta|cakes?)\b/)![1];
   if (/\b(factory|manufactur|assembly|production)\b/.test(t)) return "generic_manufacturing";
-  return "generic_food";
+  return null;
 }
 
 const BISCUIT_PROCESS: ProcessStage[] = [

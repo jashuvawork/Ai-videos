@@ -204,6 +204,28 @@ describe("MockLLM director integration", () => {
   });
 });
 
+describe("Narrative story pipeline", () => {
+  it("does not treat a story idea as a food factory", () => {
+    expect(detectProcessSubject("A boy discovers a secret room beneath his house")).toBeNull();
+    const story = generateDirectorStory({
+      idea: "A boy discovers a secret room beneath his house.",
+      duration: 30,
+      language: "en",
+      tone: "cinematic",
+      platform: "INSTAGRAM_REEL",
+      visualStyle: "PHOTOREALISTIC",
+      generationMode: "FAST",
+      videoType: "STORY",
+      voice: "MALE",
+    });
+    expect(story.continuity.contentType).toBe("narrative");
+    expect(story.scenes.some((s) => /secret room|boy|house/i.test(s.visualDescription))).toBe(true);
+    expect(story.scenes.every((s) => !/food-grade factory|stainless steel surfaces/i.test(s.visualDescription))).toBe(
+      true,
+    );
+  });
+});
+
 describe("Biscuit manufacturing pipeline", () => {
   it("detects biscuit subject and builds process chain", () => {
     expect(detectProcessSubject("How biscuits are made in a factory")).toBe("biscuits");
