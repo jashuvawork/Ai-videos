@@ -51,8 +51,6 @@ export class VideoQAService {
       const { stdout } = await execFileAsync("ffprobe", [
         "-v",
         "error",
-        "-select_streams",
-        "v:0",
         "-show_entries",
         "format=duration:stream=width,height,r_frame_rate,codec_type,duration",
         "-of",

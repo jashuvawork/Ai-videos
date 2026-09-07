@@ -98,6 +98,27 @@ describe("Hyper-realistic director", () => {
     expect(story.scenes.every((s) => s.narration === "")).toBe(true);
   });
 
+  it("keeps story prompts on the scene, not filming equipment", () => {
+    const continuity = buildContinuityBible("story", "A boy discovers a secret room beneath his house");
+    const scene = {
+      ...MANUFACTURING_SCENES[1],
+      visualDescription: "A boy lifts a dusty floorboard and stares into a hidden room",
+      environment: "old wooden house basement",
+    };
+    const built = buildVisualPrompt({
+      scene,
+      continuity,
+      visualStyle: "PHOTOREALISTIC",
+      aspectRatio: "RATIO_9_16",
+    });
+
+    expect(built.visualPrompt.startsWith("A boy lifts a dusty floorboard")).toBe(true);
+    expect(built.visualPrompt).toMatch(/photoreal live-action/i);
+    expect(built.visualPrompt.toLowerCase()).not.toContain("cinema camera");
+    expect(built.visualPrompt.toLowerCase()).not.toContain("35mm film");
+    expect(built.negativePrompt).toMatch(/tripod|gimbal|clapperboard/i);
+  });
+
   it("builds visual prompts with no-text negative prompts", () => {
     const continuity = buildContinuityBible("manufacturing", "smartphone factory");
     const scene = MANUFACTURING_SCENES[1];

@@ -2,7 +2,7 @@
  * Hyper-realistic visual generation rules + scene quality checks.
  */
 export const ABSOLUTE_NEGATIVE_PROMPT =
-  "text, captions, subtitles, title cards, chapter cards, typography, words, labels, presentation slides, colored backgrounds, colored gradient screens, blank screens, watermarks, fake logos, floating text, floating objects, teleportation, object morphing, object duplication, disappearing objects, impossible physics, unrealistic machinery, unrealistic robotic movement, distorted humans, extra fingers, deformed hands, distorted faces, CGI look, cartoon look, plastic-looking materials, fake factory, static scenes, meaningless shots, inconsistent product, inconsistent characters, inconsistent environment, excessive camera movement, impossible camera movement, artificial transitions, glowing effects, random visual changes, half CGI look, AI slideshow, stock montage, spinning transitions, objects flying into place, readable text on screens signs boxes walls clothing";
+  "text, captions, subtitles, title cards, chapter cards, typography, words, labels, presentation slides, colored backgrounds, colored gradient screens, blank screens, watermarks, fake logos, floating text, floating objects, teleportation, object morphing, object duplication, disappearing objects, impossible physics, unrealistic machinery, unrealistic robotic movement, distorted humans, extra fingers, deformed hands, distorted faces, CGI look, cartoon look, plastic-looking materials, fake factory, static scenes, meaningless shots, inconsistent product, inconsistent characters, inconsistent environment, excessive camera movement, impossible camera movement, artificial transitions, glowing effects, random visual changes, half CGI look, AI slideshow, stock montage, spinning transitions, objects flying into place, readable text on screens signs boxes walls clothing, cinema camera body, DSLR in frame, tripod, gimbal, behind the scenes, clapperboard, film equipment";
 
 export const NO_TEXT_VISUAL_SUFFIX =
   "zero visible text on screen, no titles labels captions typography, real documentary footage not presentation, active physical action entire shot";
@@ -11,7 +11,7 @@ export const REAL_WORLD_ACTION_SUFFIX =
   "believable cause and effect physical interaction: grip lift place release, machine cycles with realistic acceleration, conveyor carries object to next station";
 
 export const HYPER_REALISM_SUFFIX =
-  "hyper-realistic believable documentary footage, looks filmed on real camera in real location, not AI slideshow not animation";
+  "hyper-realistic believable scene, real people and real places, not AI slideshow not animation";
 
 /** Patterns that indicate broken or wrong scene prompts */
 const TITLE_CARD_PATTERNS = [
