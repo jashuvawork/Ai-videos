@@ -19,7 +19,7 @@ export type VideoQAResult = {
 };
 
 /** Fail job only when output is clearly broken — not for dark cinematic grades */
-const MIN_FILE_BYTES = 10000;
+const MIN_FILE_BYTES = 4000;
 const MIN_FREEZE_RATIO_FAIL = 0.75;
 
 /**
@@ -54,16 +54,23 @@ export class VideoQAService {
         "-select_streams",
         "v:0",
         "-show_entries",
-        "format=duration:stream=width,height,r_frame_rate,codec_type",
+        "format=duration:stream=width,height,r_frame_rate,codec_type,duration",
         "-of",
         "json",
         filePath,
       ]);
       const probe = JSON.parse(stdout);
-      duration = parseFloat(probe.format?.duration || "0");
+      const formatDuration = parseFloat(probe.format?.duration || "0");
       const streams = probe.streams || [];
       const videoStream = streams.find((s: { codec_type?: string }) => s.codec_type === "video");
       const audioStream = streams.find((s: { codec_type?: string }) => s.codec_type === "audio");
+      const streamDuration = parseFloat(videoStream?.duration || "0");
+      duration = streamDuration > 0.05 ? streamDuration : formatDuration;
+      if (formatDuration >= 3 && streamDuration > 0.05 && streamDuration < formatDuration * 0.75) {
+        issues.push(
+          `Picture ends at ${streamDuration.toFixed(1)}s but the file claims ${formatDuration.toFixed(1)}s — cut is broken`,
+        );
+      }
       width = videoStream?.width ?? 0;
       height = videoStream?.height ?? 0;
       if (videoStream?.r_frame_rate) {

@@ -1,21 +1,23 @@
 /**
  * Look language and edit math for social-ready story videos:
- * photorealistic picture, voiceover-led narrative, no burned-in captions.
+ * photoreal picture of the story, voiceover-led narrative, no burned-in captions.
  */
 
 export const CROSSFADE_SECONDS = 0.45;
 
+/** Style only — never mention cameras/film gear or models draw the equipment. */
 export const SOCIAL_STORY_LOOK =
-  "photorealistic cinematic film still, shot on 35mm, natural skin texture, real pores, shallow depth of field, anamorphic bokeh, motivated practical lighting, rich color, grounded physics, looks like a real movie scene uploaded to YouTube or Instagram";
+  "photoreal live-action movie scene of this exact moment, natural skin texture, real pores, shallow depth of field, motivated practical lighting, rich color, grounded physics, people and places filling the frame";
 
 export const SOCIAL_STORY_NO_TEXT =
   "no text, no subtitles, no captions, no titles, no watermarks, no logos, no lower thirds, no typography on screen";
 
 export const SOCIAL_STORY_NEGATIVE =
-  "subtitles, captions, title card, watermark, logo, text overlay, comic font, AI slideshow, plastic skin, extra fingers, deformed face, cartoon, illustration, stock montage";
+  "subtitles, captions, title card, watermark, logo, text overlay, comic font, AI slideshow, plastic skin, extra fingers, deformed face, cartoon, illustration, stock montage, cinema camera body, DSLR in frame, tripod, gimbal, behind the scenes, film equipment, clapperboard";
 
+/** Light grade only — heavy vignette + double EQ crushed previous exports. */
 export const FILM_LOOK_FILTER =
-  "eq=contrast=1.07:saturation=0.94:gamma=0.99:gamma_r=1.01:gamma_b=0.98,unsharp=5:5:0.32:5:5:0.0,vignette=PI/5,noise=alls=3:allf=t";
+  "eq=contrast=1.04:saturation=1.03:gamma=1.02:brightness=0.018,unsharp=5:5:0.22:5:5:0.0,vignette=PI/8,noise=alls=2:allf=t";
 
 export function sceneStartTimes(durations: number[], fadeSeconds = CROSSFADE_SECONDS): number[] {
   if (durations.length === 0) return [];
@@ -63,9 +65,9 @@ export function cinematicStoryVisualPrompt(params: {
     .join("; ");
 
   return [
-    params.visual,
+    `SCENE: ${params.visual}`,
     lock ? `same faces and wardrobe throughout: ${lock}` : "",
-    params.camera ? `camera: ${params.camera}` : "",
+    params.camera ? `viewpoint: ${params.camera}` : "",
     params.location ? `location: ${params.location}` : "",
     params.timeOfDay ? `time of day: ${params.timeOfDay}` : "",
     SOCIAL_STORY_LOOK,
@@ -73,4 +75,15 @@ export function cinematicStoryVisualPrompt(params: {
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+/** Keep Pollinations requests inside its size cap without breaking 9:16 / 16:9. */
+export function pollinationsFrameSize(width: number, height: number, maxEdge = 1280): { width: number; height: number } {
+  const w = Math.max(256, width);
+  const h = Math.max(256, height);
+  const scale = Math.min(1, maxEdge / Math.max(w, h));
+  return {
+    width: Math.max(256, Math.round(w * scale)),
+    height: Math.max(256, Math.round(h * scale)),
+  };
 }

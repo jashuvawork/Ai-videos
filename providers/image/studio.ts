@@ -23,7 +23,7 @@ function buildStudioImagePrompt(options: ImageGenerateOptions): string {
       "workers operating equipment not posing at camera",
       "no visible text no titles no watermarks",
     );
-  } else {
+  } else if (!options.prompt.includes("photoreal live-action")) {
     parts.push(SOCIAL_STORY_LOOK, SOCIAL_STORY_NO_TEXT);
   }
 

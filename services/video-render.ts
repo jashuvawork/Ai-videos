@@ -13,6 +13,7 @@ import {
   sceneStartTimes,
   totalTimelineDuration,
 } from "@/lib/cinematic";
+import { padVideoToDuration, probeVideoDuration } from "@/lib/ffmpeg-media";
 import type { SubtitleEntry } from "./subtitle";
 
 const execFileAsync = promisify(execFile);
@@ -66,19 +67,22 @@ export class VideoRenderService {
     videoLog("Starting cinematic story render", { projectId: input.projectId, operation: "RENDER_VIDEO" });
 
     const sceneClips: string[] = [];
-    const durations = input.scenes.map((s) => s.duration);
+    const durations = input.scenes.map((s) => Math.max(0.4, s.duration));
 
     for (const scene of input.scenes) {
+      const rawPath = join(projectDir, `scene_${scene.sceneNumber}_raw.mp4`);
       const clipPath = join(projectDir, `scene_${scene.sceneNumber}.mp4`);
 
       if (scene.videoPath) {
-        await this.normalizeVideo(scene.videoPath, clipPath, input.width, input.height, scene.duration, input.fps);
+        await this.normalizeVideo(scene.videoPath, rawPath, input.width, input.height, scene.duration, input.fps);
       } else if (scene.imagePath) {
-        await this.imageToVideo(scene.imagePath, clipPath, input.width, input.height, scene.duration, input.fps, scene.cameraMovement);
+        await this.imageToVideo(scene.imagePath, rawPath, input.width, input.height, scene.duration, input.fps, scene.cameraMovement);
       } else {
-        await this.createColorClip(clipPath, input.width, input.height, scene.duration, input.fps, scene.sceneNumber);
+        await this.createColorClip(rawPath, input.width, input.height, scene.duration, input.fps, scene.sceneNumber);
       }
 
+      await padVideoToDuration(rawPath, clipPath, scene.duration, input.fps, input.width, input.height);
+      await unlink(rawPath).catch(() => {});
       sceneClips.push(clipPath);
     }
 
@@ -108,7 +112,8 @@ export class VideoRenderService {
     } else {
       await execFileAsync("ffmpeg", [
         "-y", "-i", videoOnlyPath, "-i", audioMixedPath,
-        "-vf", FILM_LOOK_FILTER,
+        "-filter_complex", `[0:v]tpad=stop_mode=clone:stop_duration=30,${FILM_LOOK_FILTER}[v]`,
+        "-map", "[v]", "-map", "1:a",
         "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-b:v", bitrate, "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
         "-t", String(storyDuration),
@@ -151,10 +156,12 @@ export class VideoRenderService {
     outputPath: string,
     fps: number,
   ) {
+    const expected = totalTimelineDuration(durations);
     if (sceneClips.length === 1) {
       await execFileAsync("ffmpeg", [
         "-y", "-i", sceneClips[0],
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", String(fps),
+        "-t", String(expected),
         outputPath,
       ]);
       return;
@@ -167,9 +174,14 @@ export class VideoRenderService {
         "-filter_complex", buildXfadeFilter(sceneClips.length, durations),
         "-map", "[v]",
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", String(fps),
+        "-t", String(expected),
         outputPath,
       );
       await execFileAsync("ffmpeg", args);
+      const actual = await probeVideoDuration(outputPath);
+      if (actual < expected * 0.8) {
+        throw new Error(`xfade output too short (${actual.toFixed(2)}s < ${expected}s)`);
+      }
     } catch {
       const concatPath = outputPath.replace(/\.mp4$/, ".concat.txt");
       await writeFile(concatPath, sceneClips.map((p) => `file '${p}'`).join("\n"));
@@ -194,7 +206,7 @@ export class VideoRenderService {
     const movementKey = cameraMovement || "slow zoom in";
     const normalizedMovement = CAMERA_MOVEMENTS[movementKey] || movementKey;
     const totalFrames = Math.ceil(duration * fps);
-    const vf = buildMotionFilterChain(width, height, totalFrames, normalizedMovement);
+    const vf = buildMotionFilterChain(width, height, totalFrames, normalizedMovement, fps);
 
     await execFileAsync("ffmpeg", [
       "-y", "-loop", "1", "-i", imagePath,

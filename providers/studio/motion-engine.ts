@@ -102,20 +102,21 @@ export function buildMotionFilterChain(
   height: number,
   totalFrames: number,
   cameraMovement?: string,
+  fps = 30,
 ): string {
   const presetKey = resolveCameraMovement(cameraMovement);
   const preset = MOTION_PRESETS[presetKey] ?? MOTION_PRESETS["documentary drift"];
   const zoomFilter = preset.zoompan
     .replace(/\{w\}/g, String(width))
     .replace(/\{h\}/g, String(height))
-    .replace("d=125", `d=${totalFrames}`);
+    .replace("d=125", `d=${totalFrames}:fps=${fps}`);
 
   return [
     `scale=${width}:${height}:force_original_aspect_ratio=increase`,
     `crop=${width}:${height}`,
     zoomFilter,
-    "eq=contrast=1.05:saturation=0.96:gamma=0.99",
-    "noise=alls=4:allf=t",
+    "eq=contrast=1.03:saturation=1.02:gamma=1.01",
+    "noise=alls=6:allf=t",
   ].join(",");
 }
 

@@ -4,6 +4,7 @@ import {
   SOCIAL_STORY_NO_TEXT,
   buildXfadeFilter,
   cinematicStoryVisualPrompt,
+  pollinationsFrameSize,
   sceneStartTimes,
   totalTimelineDuration,
 } from "@/lib/cinematic";
@@ -39,13 +40,21 @@ describe("cinematic story prompts", () => {
       characters: [{ name: "Marcus", description: "tired taxi driver, worn jacket" }],
     });
     expect(prompt).toContain("Marcus");
-    expect(prompt).toMatch(/photorealistic cinematic/i);
+    expect(prompt).toMatch(/photoreal live-action/i);
+    expect(prompt).toContain("SCENE: Taxi drives through rain at night");
     expect(prompt).toContain(SOCIAL_STORY_NO_TEXT);
     expect(prompt.toLowerCase()).not.toContain("add subtitles");
+    expect(prompt.toLowerCase()).not.toContain("shot on 35mm");
+    expect(prompt.toLowerCase()).not.toContain("film still");
   });
 
   it("uses the default social fade length", () => {
     expect(CROSSFADE_SECONDS).toBeGreaterThan(0.2);
     expect(CROSSFADE_SECONDS).toBeLessThan(1);
+  });
+
+  it("preserves 9:16 when capping Pollinations size", () => {
+    expect(pollinationsFrameSize(1080, 1920)).toEqual({ width: 720, height: 1280 });
+    expect(pollinationsFrameSize(1920, 1080)).toEqual({ width: 1280, height: 720 });
   });
 });

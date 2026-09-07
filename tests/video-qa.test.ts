@@ -112,4 +112,50 @@ describe("VideoQAService", () => {
     expect(result.valid).toBe(true);
     expect(result.frozenFrameRatio ?? 1).toBeLessThan(0.5);
   });
+
+  it("fails when the picture track is much shorter than the file duration", async () => {
+    if (!hasFfmpeg) return;
+
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=0x445566:s=320x568:d=2",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "/tmp/qa-short-picture-v.mp4",
+    ]);
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=stereo:d=10",
+      "-c:a",
+      "aac",
+      "/tmp/qa-short-picture-a.m4a",
+    ]);
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-i",
+      "/tmp/qa-short-picture-v.mp4",
+      "-i",
+      "/tmp/qa-short-picture-a.m4a",
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      "-t",
+      "10",
+      "/tmp/qa-short-picture.mp4",
+    ]);
+
+    const qa = new VideoQAService();
+    const result = await qa.analyze("/tmp/qa-short-picture.mp4");
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((i) => i.includes("Picture ends") || i.includes("cut is broken"))).toBe(true);
+  });
 });

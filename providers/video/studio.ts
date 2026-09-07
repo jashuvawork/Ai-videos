@@ -22,14 +22,22 @@ export class StudioVideoProvider implements VideoProvider {
 
   async generate(options: VideoGenerateOptions): Promise<VideoResponse> {
     const duration = Math.max(2, Math.min(options.duration, 12));
-    const motionPrompt = [
-      options.prompt,
-      "hyper-realistic documentary footage",
-      "active physical motion throughout",
-      "workers and machines moving",
-      "natural motion blur",
-      "no visible text",
-    ].join(", ");
+    const isProcess = PROCESS_PROMPT_RE.test(options.prompt);
+    const motionPrompt = isProcess
+      ? [
+          options.prompt,
+          "hyper-realistic documentary footage",
+          "active physical motion throughout",
+          "workers and machines moving",
+          "natural motion blur",
+          "no visible text",
+        ].join(", ")
+      : [
+          options.prompt,
+          "photoreal live-action movie scene of this exact moment",
+          "people and places filling the frame",
+          "natural motion, no text",
+        ].join(", ");
     const movement = resolveCameraMovement(options.cameraMovement);
 
     let imageA: Buffer;
