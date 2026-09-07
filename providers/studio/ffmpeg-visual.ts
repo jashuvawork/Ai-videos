@@ -36,6 +36,8 @@ export async function fetchPollinationsImage(
   const url = new URL("https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt));
   url.searchParams.set("width", String(cappedW));
   url.searchParams.set("height", String(cappedH));
+  url.searchParams.set("model", "flux");
+  url.searchParams.set("quality", "high");
   url.searchParams.set("nologo", "true");
   url.searchParams.set("seed", String(seed ?? hashSeed(prompt)));
 

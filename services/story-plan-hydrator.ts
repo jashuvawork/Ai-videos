@@ -1,3 +1,4 @@
+import { cinematicStoryVisualPrompt } from "@/lib/cinematic";
 import { prisma } from "@/lib/db";
 import { StoryPlanSchema, type StoryPlan, type StoryScene } from "@/lib/story-studio/schemas";
 
@@ -79,7 +80,16 @@ export async function hydrateStoryPlan(projectId: string, rawPlan: unknown): Pro
         narration: s.narration,
         dialogue: s.dialogue.length ? JSON.stringify(s.dialogue) : null,
         visualDescription: s.visualDescription,
-        visualPrompt: s.aiVideoPrompt || s.visualDescription,
+        visualPrompt: cinematicStoryVisualPrompt({
+          visual: s.aiVideoPrompt || s.visualDescription,
+          camera: s.camera,
+          location: s.location,
+          timeOfDay: s.timeOfDay,
+          characters: plan.characters.map((c) => ({
+            name: c.name,
+            description: c.description,
+          })),
+        }),
         cameraMovement: s.camera,
         environment: [s.location, s.timeOfDay, s.weather].filter(Boolean).join(", "),
         soundEffects: s.soundEffects,

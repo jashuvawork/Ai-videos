@@ -185,14 +185,12 @@ export class StudioPipelineProcessor {
     // Voice
     await this.updateStep(jobId, "GENERATE_VOICE");
     await this.updateStudioStatus(projectId, "VOICE_GENERATING");
-    const wordTimingsMap = new Map<string, Array<{ word: string; start: number; end: number }>>();
-
     if (project.voice !== "NONE") {
       await mapWithConcurrency(hydratedScenes, 1, async ({ record, storyScene }) => {
         const scene = await prisma.scene.findUnique({ where: { id: record.id } });
         if (!scene?.narration) return;
         const emotion = storyScene.voiceDirection?.emotion;
-        const result = await this.voiceService.generateForScene(
+        await this.voiceService.generateForScene(
           projectId,
           record.id,
           scene.narration,
@@ -200,7 +198,6 @@ export class StudioPipelineProcessor {
           project.voice,
           emotion,
         );
-        if (result.wordTimings) wordTimingsMap.set(record.id, result.wordTimings);
       });
     }
 
@@ -235,23 +232,9 @@ export class StudioPipelineProcessor {
       }),
     );
 
-    // Subtitles
+    // Social story exports stay caption-free — voice carries the story.
     await this.updateStep(jobId, "GENERATE_SUBTITLES");
-    const timelineScenes = timeline.scenes.map((ts) => {
-      const scene = scenesWithVoice.find((s) => s.id === ts.id)!;
-      return {
-        id: ts.id,
-        narration: scene.narration,
-        caption: scene.caption,
-        duration: ts.adjustedDuration,
-        startTime: ts.startTime,
-      };
-    });
-    const subtitleEntries = await this.subtitleService.generateFromScenes(
-      projectId,
-      timelineScenes,
-      wordTimingsMap,
-    );
+    await this.subtitleService.generateFromScenes(projectId, []);
 
     // Render
     await this.updateStep(jobId, "RENDER_VIDEO");
@@ -284,8 +267,7 @@ export class StudioPipelineProcessor {
       fps: env.RENDER_FPS,
       scenes: renderScenes,
       musicPath: musicAsset?.localPath ?? undefined,
-      subtitles: subtitleEntries,
-      burnSubtitles: true,
+      burnSubtitles: false,
     });
 
     const render = await prisma.render.create({
@@ -320,7 +302,7 @@ export class StudioPipelineProcessor {
     await this.updateStudioStatus(projectId, "QC_RUNNING");
     const qc = await this.studioQC.analyze(videoPath, plan, {
       hasVoice: voiceAssets.length > 0,
-      hasSubtitles: subtitleEntries.length > 0,
+      hasSubtitles: false,
       sceneCount: scenesWithVoice.length,
     });
 

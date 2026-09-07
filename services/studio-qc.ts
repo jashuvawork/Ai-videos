@@ -40,7 +40,8 @@ export class StudioQCService {
     const voice = options.hasVoice ? 9.0 : 4.0;
     const audioMix = qa.hasAudio ? 8.7 : 5.0;
     const pacing = plan.scenes.every((s) => s.duration >= 3 && s.duration <= 20) ? 8.5 : 7.0;
-    const subtitleQuality = options.hasSubtitles ? 9.2 : 6.0;
+    // Clean cinematic picture: burned-in captions look cheap on YouTube/Instagram.
+    const subtitleQuality = options.hasSubtitles ? 5.5 : 9.5;
 
     if (!options.hasVoice) issues.push("No narration audio detected");
     if (plan.scenes.filter((s) => s.aiVideoRequired).length > plan.scenes.length * 0.6) {

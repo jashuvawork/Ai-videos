@@ -1,13 +1,18 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
-import { join, dirname } from "path";
+import { join } from "path";
 import { env } from "@/config/env";
 import { BITRATE_PRESETS } from "@/config/video";
 import { buildMotionFilterChain } from "@/providers/studio/motion-engine";
 import { storage } from "@/storage";
-import { prisma } from "@/lib/db";
 import { videoLog } from "@/lib/logger";
+import {
+  FILM_LOOK_FILTER,
+  buildXfadeFilter,
+  sceneStartTimes,
+  totalTimelineDuration,
+} from "@/lib/cinematic";
 import type { SubtitleEntry } from "./subtitle";
 
 const execFileAsync = promisify(execFile);
@@ -32,6 +37,7 @@ export interface RenderInput {
   scenes: RenderSceneInput[];
   musicPath?: string;
   subtitles?: SubtitleEntry[];
+  /** Always off for social story exports unless explicitly requested. */
   burnSubtitles?: boolean;
   subtitleStyle?: string;
 }
@@ -57,10 +63,10 @@ export class VideoRenderService {
     const projectDir = join(this.workDir, input.projectId, `v${input.version}`);
     await mkdir(projectDir, { recursive: true });
 
-    videoLog("Starting render", { projectId: input.projectId, operation: "RENDER_VIDEO" });
+    videoLog("Starting cinematic story render", { projectId: input.projectId, operation: "RENDER_VIDEO" });
 
     const sceneClips: string[] = [];
-    const voiceClips: string[] = [];
+    const durations = input.scenes.map((s) => s.duration);
 
     for (const scene of input.scenes) {
       const clipPath = join(projectDir, `scene_${scene.sceneNumber}.mp4`);
@@ -74,43 +80,39 @@ export class VideoRenderService {
       }
 
       sceneClips.push(clipPath);
-
-      if (scene.voicePath) {
-        voiceClips.push(scene.voicePath);
-      }
     }
 
-    const concatPath = join(projectDir, "concat.txt");
-    const concatContent = sceneClips.map((p) => `file '${p}'`).join("\n");
-    await writeFile(concatPath, concatContent);
-
     const videoOnlyPath = join(projectDir, "video_only.mp4");
-    await execFileAsync("ffmpeg", [
-      "-y", "-f", "concat", "-safe", "0", "-i", concatPath,
-      "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", String(input.fps),
-      videoOnlyPath,
-    ]);
+    await this.assembleStoryPicture(sceneClips, durations, videoOnlyPath, input.fps);
 
-    let audioMixedPath = join(projectDir, "audio_mixed.mp3");
-    await this.mixAudio(voiceClips, input.musicPath, audioMixedPath, input.scenes);
+    const audioMixedPath = join(projectDir, "audio_mixed.mp3");
+    const storyDuration = totalTimelineDuration(durations);
+    await this.mixStoryAudio(input.scenes, durations, input.musicPath, audioMixedPath, storyDuration);
 
-    let finalPath = join(projectDir, "final.mp4");
+    const finalPath = join(projectDir, "final.mp4");
+    const bitrate = BITRATE_PRESETS[env.RENDER_QUALITY] ?? BITRATE_PRESETS.high;
 
-    if (input.burnSubtitles && input.subtitles && input.subtitles.length > 0) {
+    const burn = input.burnSubtitles === true && input.subtitles && input.subtitles.length > 0;
+    if (burn) {
       const srtPath = join(projectDir, "subs.srt");
-      await this.writeSrt(srtPath, input.subtitles);
+      await this.writeSrt(srtPath, input.subtitles!);
       const srtEscaped = srtPath.replace(/'/g, "'\\''");
       await execFileAsync("ffmpeg", [
         "-y", "-i", videoOnlyPath, "-i", audioMixedPath,
         "-vf", `subtitles='${srtEscaped}':force_style='FontSize=22,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Alignment=2,MarginV=60'`,
-        "-c:v", "libx264", "-c:a", "aac", "-b:a", "192k",
-        "-shortest", finalPath,
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-b:v", bitrate,
+        "-c:a", "aac", "-b:a", "192k",
+        "-t", String(storyDuration),
+        finalPath,
       ]);
     } else {
       await execFileAsync("ffmpeg", [
         "-y", "-i", videoOnlyPath, "-i", audioMixedPath,
-        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-        "-shortest", finalPath,
+        "-vf", FILM_LOOK_FILTER,
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-b:v", bitrate, "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",
+        "-t", String(storyDuration),
+        finalPath,
       ]);
     }
 
@@ -133,16 +135,51 @@ export class VideoRenderService {
       "image/jpeg",
     );
 
-    const duration = input.scenes.reduce((sum, s) => sum + s.duration, 0);
-
-    await this.cleanup(projectDir, [concatPath, videoOnlyPath, audioMixedPath, ...sceneClips]);
+    await this.cleanup(projectDir, [videoOnlyPath, audioMixedPath, ...sceneClips]);
 
     return {
       videoPath: storedVideo.localPath,
       thumbnailPath: storedThumb.localPath,
-      duration,
+      duration: storyDuration,
       fileSize: storedVideo.fileSize,
     };
+  }
+
+  private async assembleStoryPicture(
+    sceneClips: string[],
+    durations: number[],
+    outputPath: string,
+    fps: number,
+  ) {
+    if (sceneClips.length === 1) {
+      await execFileAsync("ffmpeg", [
+        "-y", "-i", sceneClips[0],
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", String(fps),
+        outputPath,
+      ]);
+      return;
+    }
+
+    try {
+      const args = ["-y"];
+      for (const clip of sceneClips) args.push("-i", clip);
+      args.push(
+        "-filter_complex", buildXfadeFilter(sceneClips.length, durations),
+        "-map", "[v]",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", String(fps),
+        outputPath,
+      );
+      await execFileAsync("ffmpeg", args);
+    } catch {
+      const concatPath = outputPath.replace(/\.mp4$/, ".concat.txt");
+      await writeFile(concatPath, sceneClips.map((p) => `file '${p}'`).join("\n"));
+      await execFileAsync("ffmpeg", [
+        "-y", "-f", "concat", "-safe", "0", "-i", concatPath,
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", String(fps),
+        outputPath,
+      ]);
+      await unlink(concatPath).catch(() => {});
+    }
   }
 
   private async imageToVideo(
@@ -203,44 +240,19 @@ export class VideoRenderService {
     ]);
   }
 
-  private async mixAudio(
-    voicePaths: string[],
+  private async mixStoryAudio(
+    scenes: RenderSceneInput[],
+    durations: number[],
     musicPath: string | undefined,
     outputPath: string,
-    scenes: RenderSceneInput[],
+    totalDuration: number,
   ) {
-    const args = ["-y"];
-    const filters: string[] = [];
-    let inputIndex = 0;
+    const starts = sceneStartTimes(durations);
+    const voiceTracks = scenes
+      .map((scene, i) => (scene.voicePath ? { path: scene.voicePath, start: starts[i] ?? 0 } : null))
+      .filter((t): t is { path: string; start: number } => Boolean(t));
 
-    const voiceInputs: number[] = [];
-    for (const voicePath of voicePaths) {
-      args.push("-i", voicePath);
-      voiceInputs.push(inputIndex++);
-    }
-
-    if (musicPath) {
-      args.push("-i", musicPath);
-      const musicIdx = inputIndex++;
-
-      if (voiceInputs.length > 0) {
-        const voiceMix = voiceInputs.map((i) => "[" + i + ":a]").join("");
-        filters.push(
-          voiceMix + "amix=inputs=" + voiceInputs.length + ":duration=longest:dropout_transition=2[voice]",
-        );
-        filters.push("[voice]volume=1.0[voicev]");
-        filters.push("[" + musicIdx + ":a]volume=0.2[musicv]");
-        filters.push("[voicev][musicv]amix=inputs=2:duration=longest:dropout_transition=2[out]");
-      } else {
-        filters.push("[" + musicIdx + ":a]volume=0.3[out]");
-      }
-    } else if (voiceInputs.length > 0) {
-      const voiceMix = voiceInputs.map((i) => "[" + i + ":a]").join("");
-      filters.push(
-        voiceMix + "amix=inputs=" + voiceInputs.length + ":duration=longest:dropout_transition=2[out]",
-      );
-    } else {
-      const totalDuration = scenes.reduce((s, sc) => s + sc.duration, 0);
+    if (voiceTracks.length === 0 && !musicPath) {
       await execFileAsync("ffmpeg", [
         "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
         "-t", String(totalDuration), "-c:a", "libmp3lame", outputPath,
@@ -248,8 +260,49 @@ export class VideoRenderService {
       return;
     }
 
+    const args = ["-y"];
+    const filters: string[] = [];
+    let inputIndex = 0;
+
+    const delayed: string[] = [];
+    for (const track of voiceTracks) {
+      args.push("-i", track.path);
+      const idx = inputIndex++;
+      const ms = Math.max(0, Math.round(track.start * 1000));
+      filters.push(`[${idx}:a]adelay=${ms}|${ms},aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo[v${idx}]`);
+      delayed.push(`[v${idx}]`);
+    }
+
+    let voiceLabel: string | null = null;
+    if (delayed.length === 1) {
+      filters.push(`${delayed[0]}volume=1.15[voice]`);
+      voiceLabel = "voice";
+    } else if (delayed.length > 1) {
+      filters.push(
+        `${delayed.join("")}amix=inputs=${delayed.length}:duration=longest:dropout_transition=0:normalize=0,volume=1.15[voice]`,
+      );
+      voiceLabel = "voice";
+    }
+
+    if (musicPath) {
+      args.push("-stream_loop", "-1", "-i", musicPath);
+      const musicIdx = inputIndex++;
+      filters.push(
+        `[${musicIdx}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,atrim=0:${totalDuration},asetpts=PTS-STARTPTS,volume=0.12[music]`,
+      );
+      if (voiceLabel) {
+        filters.push(
+          `[${voiceLabel}][music]sidechaincompress=threshold=0.04:ratio=7:attack=40:release=320:makeup=2[out]`,
+        );
+      } else {
+        filters.push("[music]volume=0.22[out]");
+      }
+    } else if (voiceLabel) {
+      filters.push(`[${voiceLabel}]anull[out]`);
+    }
+
     args.push("-filter_complex", filters.join(";"));
-    args.push("-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", outputPath);
+    args.push("-map", "[out]", "-t", String(totalDuration), "-c:a", "libmp3lame", "-b:a", "192k", outputPath);
     await execFileAsync("ffmpeg", args);
   }
 

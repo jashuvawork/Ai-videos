@@ -281,21 +281,17 @@ export class VideoGenerationProcessor {
 
     // GENERATE_VOICE
     await this.updateStep(jobId, "GENERATE_VOICE");
-    const wordTimingsMap = new Map<string, Array<{ word: string; start: number; end: number }>>();
 
     if (project.voice !== "NONE") {
       await mapWithConcurrency(sceneRecords, 1, async (scene) => {
         if (!scene.narration) return;
-        const result = await this.voiceService.generateForScene(
+        await this.voiceService.generateForScene(
           projectId,
           scene.id,
           scene.narration,
           project.language,
           project.voice,
         );
-        if (result.wordTimings) {
-          wordTimingsMap.set(scene.id, result.wordTimings);
-        }
       });
     }
 
@@ -332,22 +328,9 @@ export class VideoGenerationProcessor {
 
     const timeline = this.timelineService.buildTimeline(scenesForTimeline);
 
-    // GENERATE_SUBTITLES
+    // GENERATE_SUBTITLES — keep picture clean; voice carries the story
     await this.updateStep(jobId, "GENERATE_SUBTITLES");
-    const timelineScenes = timeline.scenes.map((ts) => {
-      const scene = scenesWithVoice.find((s) => s.id === ts.id)!;
-      return {
-        id: ts.id,
-        narration: scene.narration,
-        caption: scene.caption,
-        duration: ts.adjustedDuration,
-        startTime: ts.startTime,
-      };
-    });
-
-    const subtitleEntries = await this.subtitleService.generateFromScenes(
-      projectId, timelineScenes, wordTimingsMap,
-    );
+    const subtitleEntries = await this.subtitleService.generateFromScenes(projectId, []);
 
     // RENDER_VIDEO
     await this.updateStep(jobId, "RENDER_VIDEO");

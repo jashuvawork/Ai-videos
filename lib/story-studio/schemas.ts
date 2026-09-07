@@ -98,7 +98,7 @@ export const CreateStoryProjectSchema = z.object({
       maxBudgetUsd: z.number().min(0).default(25),
       gameplayPercent: z.number().min(0).max(100).default(70),
       aiVisualPercent: z.number().min(0).max(100).default(30),
-      subtitleStyle: z.string().default("CINEMATIC"),
+      subtitleStyle: z.string().default("NONE"),
       qcThreshold: z.number().min(0).max(10).default(8),
       shortsCount: z.number().min(0).max(10).default(5),
     })

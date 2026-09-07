@@ -42,8 +42,8 @@ export const BITRATE_PRESETS = {
   high: "8M",
 } as const;
 
-export const MUSIC_DUCK_VOLUME = 0.2;
-export const NARRATION_VOLUME = 1.0;
+export const MUSIC_DUCK_VOLUME = 0.12;
+export const NARRATION_VOLUME = 1.15;
 export const SFX_DEFAULT_VOLUME = 0.6;
 
 export const SUPPORTED_LANGUAGES = [
@@ -79,7 +79,7 @@ export const STEP_LABELS: Record<string, string> = {
   GENERATE_VOICE: "Creating voiceover",
   GENERATE_MUSIC: "Adding music",
   GENERATE_SFX: "Adding sound effects",
-  GENERATE_SUBTITLES: "Creating captions",
+  GENERATE_SUBTITLES: "Keeping picture clean (no captions)",
   BUILD_TIMELINE: "Building timeline",
   RENDER_VIDEO: "Rendering video",
   GENERATE_THUMBNAIL: "Creating thumbnail",

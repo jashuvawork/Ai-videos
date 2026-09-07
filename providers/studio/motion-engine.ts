@@ -114,8 +114,8 @@ export function buildMotionFilterChain(
     `scale=${width}:${height}:force_original_aspect_ratio=increase`,
     `crop=${width}:${height}`,
     zoomFilter,
-    "noise=c0s=8:c0f=t+u",
-    "eq=contrast=1.03:saturation=1.02",
+    "eq=contrast=1.05:saturation=0.96:gamma=0.99",
+    "noise=alls=4:allf=t",
   ].join(",");
 }
 
