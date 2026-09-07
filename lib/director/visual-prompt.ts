@@ -1,4 +1,5 @@
 import type { ContinuityBible, SceneTemplate } from "./types";
+import { SOCIAL_STORY_FACE_LOCK } from "@/lib/cinematic";
 import {
   ABSOLUTE_NEGATIVE_PROMPT,
   HYPER_REALISM_SUFFIX,
@@ -70,7 +71,7 @@ export function buildVisualPrompt(params: {
     continuity.captureMedium,
     continuity.lensCharacter,
     isProcess ? SIMPLE_MOTION_DIRECTIVE : "one clear action happening now",
-    isProcess ? REAL_WORLD_ACTION_SUFFIX : "",
+    isProcess ? REAL_WORLD_ACTION_SUFFIX : SOCIAL_STORY_FACE_LOCK,
     isProcess ? NATURAL_IMPERFECTION_DIRECTIVE : "",
     NO_TEXT_VISUAL_SUFFIX,
     isProcess ? HYPER_REALISM_SUFFIX : "photoreal live-action, real people and places, not a slideshow",

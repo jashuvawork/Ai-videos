@@ -13,7 +13,11 @@ export const SOCIAL_STORY_NO_TEXT =
   "no text, no subtitles, no captions, no titles, no watermarks, no logos, no lower thirds, no typography on screen";
 
 export const SOCIAL_STORY_NEGATIVE =
-  "subtitles, captions, title card, watermark, logo, text overlay, comic font, AI slideshow, plastic skin, extra fingers, deformed face, cartoon, illustration, stock montage, cinema camera body, DSLR in frame, tripod, gimbal, behind the scenes, film equipment, clapperboard";
+  "subtitles, captions, title card, watermark, logo, text overlay, comic font, AI slideshow, plastic skin, extra fingers, deformed face, missing face, smeared face, melted face, featureless face, blob head, faceless, no eyes, cartoon, illustration, stock montage, cinema camera body, DSLR in frame, tripod, gimbal, behind the scenes, film equipment, clapperboard";
+
+/** Distant full-body shots smear faces — keep people close enough to read features. */
+export const SOCIAL_STORY_FACE_LOCK =
+  "if a person is in frame: medium close-up or closer, face large and sharp, two eyes a nose and a mouth clearly visible, real human facial features, same face every shot";
 
 /** Light grade only — heavy vignette + double EQ crushed previous exports. */
 export const FILM_LOOK_FILTER =
@@ -71,6 +75,7 @@ export function cinematicStoryVisualPrompt(params: {
     params.location ? `location: ${params.location}` : "",
     params.timeOfDay ? `time of day: ${params.timeOfDay}` : "",
     SOCIAL_STORY_LOOK,
+    SOCIAL_STORY_FACE_LOCK,
     SOCIAL_STORY_NO_TEXT,
   ]
     .filter(Boolean)
