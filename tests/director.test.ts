@@ -99,7 +99,7 @@ describe("Hyper-realistic director", () => {
   });
 
   it("keeps story prompts on the scene, not filming equipment", () => {
-    const continuity = buildContinuityBible("story", "A boy discovers a secret room beneath his house");
+    const continuity = buildContinuityBible("narrative", "A boy discovers a secret room beneath his house");
     const scene = {
       ...MANUFACTURING_SCENES[1],
       visualDescription: "A boy lifts a dusty floorboard and stares into a hidden room",
