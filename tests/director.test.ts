@@ -15,6 +15,8 @@ import { MockLLMProvider } from "@/providers/llm/mock";
 import { StorySchema } from "@/lib/schemas";
 import { storyPrompt } from "@/lib/prompts";
 import { ProcessContinuityService, detectProcessSubject } from "@/services/process-continuity";
+import { inferStoryProtagonist } from "@/lib/director/continuity-engine";
+import { buildNarrativeScenes } from "@/lib/director/templates/narrative";
 import { ReferenceAnalysisService } from "@/services/reference-analysis";
 import { VisualConsistencyCheckService } from "@/services/visual-consistency-check";
 
@@ -205,6 +207,20 @@ describe("MockLLM director integration", () => {
 });
 
 describe("Narrative story pipeline", () => {
+  it("locks a readable face for a village girl police story", () => {
+    const id = inferStoryProtagonist(
+      "An old story of a girl in a village who wants to become a police officer",
+    );
+    expect(id).toMatch(/Meera|village girl/i);
+    expect(id).toMatch(/two eyes/i);
+    const scenes = buildNarrativeScenes(
+      "A girl in a village wants to become a police officer",
+    );
+    expect(scenes.some((s) => /medium close-up|close-up/i.test(s.cameraAngle))).toBe(true);
+    expect(scenes.some((s) => /khaki|police/i.test(s.visualDescription))).toBe(true);
+    expect(scenes[0].visualDescription).toMatch(/no tiny|empty/i);
+  });
+
   it("does not treat a story idea as a food factory", () => {
     expect(detectProcessSubject("A boy discovers a secret room beneath his house")).toBeNull();
     const story = generateDirectorStory({

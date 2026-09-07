@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CROSSFADE_SECONDS,
+  SOCIAL_STORY_FACE_LOCK,
   SOCIAL_STORY_NO_TEXT,
   buildXfadeFilter,
   cinematicStoryVisualPrompt,
@@ -43,6 +44,8 @@ describe("cinematic story prompts", () => {
     expect(prompt).toMatch(/photoreal live-action/i);
     expect(prompt).toContain("SCENE: Taxi drives through rain at night");
     expect(prompt).toContain(SOCIAL_STORY_NO_TEXT);
+    expect(prompt).toContain(SOCIAL_STORY_FACE_LOCK);
+    expect(prompt.toLowerCase()).toContain("two eyes");
     expect(prompt.toLowerCase()).not.toContain("add subtitles");
     expect(prompt.toLowerCase()).not.toContain("shot on 35mm");
     expect(prompt.toLowerCase()).not.toContain("film still");

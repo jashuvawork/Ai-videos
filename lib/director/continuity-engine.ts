@@ -39,9 +39,27 @@ export function buildContinuityIdentities(contentType: ContentType, idea: string
   return {
     phoneIdentity: `SUBJECT_IDENTITY: ${idea.split(/[.!?]/)[0].trim()}, consistent visual identity`,
     factoryIdentity: "ENVIRONMENT_IDENTITY: consistent location lighting geography across scenes",
-    characterIdentity: "CHARACTER_IDENTITY: protagonist consistent face hair clothing age, natural movement not posing",
+    characterIdentity: inferStoryProtagonist(idea),
     productReference: "consistent subjects and environment throughout",
   };
+}
+
+/** Lock a readable human face so distant shots do not smear into a blob. */
+export function inferStoryProtagonist(idea: string): string {
+  const t = idea.toLowerCase();
+  const face =
+    "clear photoreal face with two eyes a nose and a mouth, sharp facial features, face large in frame, same person every shot";
+
+  if (/\b(girl|young woman|daughter)\b/.test(t) && /\bvillage\b/.test(t) && /\bpolice\b/.test(t)) {
+    return `CHARACTER_IDENTITY Meera: young village girl about 17, South Asian, dark braid, warm brown eyes, simple cotton salwar kameez, determined expression, ${face}`;
+  }
+  if (/\b(girl|young woman|woman|she)\b/.test(t)) {
+    return `CHARACTER_IDENTITY: same young woman throughout, consistent hair clothes and age, ${face}`;
+  }
+  if (/\b(boy|young man|son|he)\b/.test(t)) {
+    return `CHARACTER_IDENTITY: same young man throughout, consistent hair clothes and age, ${face}`;
+  }
+  return `CHARACTER_IDENTITY: same protagonist throughout, consistent hair clothes and age, ${face}`;
 }
 
 function extractSubject(idea: string): string {
